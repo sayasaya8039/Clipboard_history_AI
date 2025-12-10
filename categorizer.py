@@ -2,9 +2,9 @@
 import re
 from typing import Optional
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote
 
-from config import AI_PROVIDER
+from database import get_setting
 from ai_client import categorize_with_ai
 
 
@@ -123,7 +123,8 @@ def categorize(
     rule_category = categorize_text_rule_based(text)
 
     # AI分類が有効でない場合、またはルールで明確に判定できた場合
-    if not use_ai or AI_PROVIDER == "none":
+    ai_provider = get_setting("ai_provider", "none")
+    if not use_ai or ai_provider == "none":
         return rule_category
 
     # ルールベースで「text」と判定された場合のみAIを使用

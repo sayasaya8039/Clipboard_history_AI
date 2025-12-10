@@ -1,7 +1,7 @@
 """AI APIクライアントモジュール"""
 from typing import Optional
 
-from config import AI_PROVIDER, OPENAI_API_KEY, GEMINI_API_KEY
+from database import get_setting
 
 
 CATEGORIZE_PROMPT = """
@@ -24,13 +24,14 @@ CATEGORIZE_PROMPT = """
 
 def categorize_with_openai(text: str) -> Optional[str]:
     """OpenAI APIでカテゴリ分類"""
-    if not OPENAI_API_KEY:
+    api_key = get_setting("openai_api_key", "")
+    if not api_key:
         return None
 
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=OPENAI_API_KEY)
+        client = OpenAI(api_key=api_key)
 
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -59,13 +60,14 @@ def categorize_with_openai(text: str) -> Optional[str]:
 
 def categorize_with_gemini(text: str) -> Optional[str]:
     """Google Gemini APIでカテゴリ分類"""
-    if not GEMINI_API_KEY:
+    api_key = get_setting("gemini_api_key", "")
+    if not api_key:
         return None
 
     try:
         import google.generativeai as genai
 
-        genai.configure(api_key=GEMINI_API_KEY)
+        genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-pro")
 
         response = model.generate_content(
@@ -91,9 +93,10 @@ def categorize_with_gemini(text: str) -> Optional[str]:
 
 def categorize_with_ai(text: str) -> Optional[str]:
     """設定されたAIプロバイダーでカテゴリ分類"""
-    if AI_PROVIDER == "openai":
+    ai_provider = get_setting("ai_provider", "none")
+    if ai_provider == "openai":
         return categorize_with_openai(text)
-    elif AI_PROVIDER == "gemini":
+    elif ai_provider == "gemini":
         return categorize_with_gemini(text)
 
     return None

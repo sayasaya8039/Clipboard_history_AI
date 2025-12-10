@@ -1,6 +1,5 @@
 """データベース操作モジュール"""
 import sqlite3
-from datetime import datetime
 from typing import Optional
 from pathlib import Path
 
@@ -127,14 +126,29 @@ def get_history_by_id(history_id: int) -> Optional[dict]:
 
 
 def delete_history(history_id: int) -> bool:
-    """履歴を削除"""
+    """履歴を削除（関連する画像ファイルも削除）"""
     conn = get_connection()
     cursor = conn.cursor()
 
+    # 画像パスを取得
+    cursor.execute("SELECT image_path FROM clipboard_history WHERE id = ?", (history_id,))
+    row = cursor.fetchone()
+    image_path = row["image_path"] if row else None
+
+    # 履歴を削除
     cursor.execute("DELETE FROM clipboard_history WHERE id = ?", (history_id,))
     affected = cursor.rowcount
     conn.commit()
     conn.close()
+
+    # 画像ファイルを削除
+    if affected > 0 and image_path:
+        try:
+            path = Path(image_path)
+            if path.exists():
+                path.unlink()
+        except Exception:
+            pass  # ファイル削除に失敗しても処理は続行
 
     return affected > 0
 
@@ -156,14 +170,28 @@ def toggle_favorite(history_id: int) -> bool:
 
 
 def clear_all_history() -> int:
-    """全履歴を削除（お気に入り以外）"""
+    """全履歴を削除（お気に入り以外、関連する画像ファイルも削除）"""
     conn = get_connection()
     cursor = conn.cursor()
 
+    # 削除対象の画像パスを取得
+    cursor.execute("SELECT image_path FROM clipboard_history WHERE is_favorite = FALSE AND image_path IS NOT NULL")
+    image_paths = [row["image_path"] for row in cursor.fetchall()]
+
+    # 履歴を削除
     cursor.execute("DELETE FROM clipboard_history WHERE is_favorite = FALSE")
     affected = cursor.rowcount
     conn.commit()
     conn.close()
+
+    # 画像ファイルを削除
+    for image_path in image_paths:
+        try:
+            path = Path(image_path)
+            if path.exists():
+                path.unlink()
+        except Exception:
+            pass  # ファイル削除に失敗しても処理は続行
 
     return affected
 
