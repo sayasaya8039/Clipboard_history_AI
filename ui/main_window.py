@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from PyQt6.QtCore import QTimer, Qt, QRectF, pyqtSignal
-from PyQt6.QtGui import QPainterPath, QRegion
+from PyQt6.QtGui import QIcon, QPainterPath, QRegion
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QDialog,
 )
 
-from config import APP_NAME, APP_VERSION
+from config import APP_NAME, APP_VERSION, RESOURCES_DIR
 from database import delete_history, get_history, toggle_favorite
 from ui.detail_panels import HistoryDetailPanel, SnippetDetailPanel
 from ui.dialogs import NewItemDialog, NewSnippetDialog
@@ -51,6 +51,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
 
         self.setWindowTitle(APP_NAME)
+        self.setWindowIcon(QIcon(str(RESOURCES_DIR / "icon.ico")))
         self.setMinimumSize(1200, 760)
         self.resize(1440, 900)
         self.setWindowFlags(

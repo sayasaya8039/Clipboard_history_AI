@@ -106,9 +106,12 @@ class TrayIcon(QObject):
         self._tray_icon = QSystemTrayIcon()
 
         # アイコン設定
-        icon_path = RESOURCES_DIR / "icon.png"
+        icon_path = RESOURCES_DIR / "icon.ico"
+        fallback_path = RESOURCES_DIR / "icon.png"
         if icon_path.exists():
             self._tray_icon.setIcon(QIcon(str(icon_path)))
+        elif fallback_path.exists():
+            self._tray_icon.setIcon(QIcon(str(fallback_path)))
         else:
             self._tray_icon.setIcon(create_default_icon())
 

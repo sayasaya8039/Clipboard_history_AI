@@ -6,14 +6,14 @@
 import sys
 from pathlib import Path
 
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 
 # アプリケーションディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import APP_NAME
+from config import APP_NAME, RESOURCES_DIR
 from database import init_database, get_setting
 from clipboard_monitor import ClipboardMonitor
 from ui.styles import get_stylesheet, is_dark_mode
@@ -31,6 +31,7 @@ class Application:
         self.app.setApplicationName(APP_NAME)
         self.app.setStyle("Fusion")
         self.app.setFont(QFont("Segoe UI", 9))
+        self.app.setWindowIcon(QIcon(str(RESOURCES_DIR / "icon.ico")))
         self.app.setQuitOnLastWindowClosed(False)  # ウィンドウを閉じても終了しない
 
         # データベース初期化
