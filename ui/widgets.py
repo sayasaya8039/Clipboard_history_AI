@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from PyQt6.QtCore import QPoint, Qt, pyqtSignal
+from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QFont, QFontMetrics, QTextLayout, QTextOption
 from PyQt6.QtWidgets import (
     QButtonGroup,
@@ -258,6 +259,7 @@ class ClampedTextLabel(QLabel):
         super().__init__(parent)
         self._max_lines = max(1, max_lines)
         self._raw_text = ""
+        self._refresh_scheduled = False
         self.setTextFormat(Qt.TextFormat.PlainText)
         self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         self.setWordWrap(False)
@@ -270,19 +272,26 @@ class ClampedTextLabel(QLabel):
 
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
+        if not self._refresh_scheduled:
+            self._refresh_scheduled = True
+            QTimer.singleShot(0, self._apply_pending_refresh)
+
+    def _apply_pending_refresh(self) -> None:
+        self._refresh_scheduled = False
         self._refresh_text()
 
     def _refresh_text(self) -> None:
         if not self._raw_text:
-            super().setText("")
-            self.setMaximumHeight(0)
+            if self.text():
+                super().setText("")
             return
 
         available_width = max(1, self.contentsRect().width())
         metrics = QFontMetrics(self.font())
         lines = self._layout_lines(self._raw_text, available_width, metrics)
-        super().setText("\n".join(lines))
-        self.setMaximumHeight(metrics.lineSpacing() * len(lines))
+        display_text = "\n".join(lines)
+        if display_text != self.text():
+            super().setText(display_text)
 
     def _layout_lines(self, text: str, width: int, metrics: QFontMetrics) -> list[str]:
         layout = QTextLayout(text, self.font())
