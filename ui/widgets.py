@@ -71,6 +71,9 @@ def _clear_layout(layout: QVBoxLayout | QHBoxLayout) -> None:
 class TitleBarWidget(QWidget):
     """Figma 風のカスタムタイトルバー。"""
 
+    close_requested = pyqtSignal()
+    minimize_requested = pyqtSignal()
+    maximize_requested = pyqtSignal()
     new_requested = pyqtSignal()
     settings_requested = pyqtSignal()
 
@@ -91,11 +94,32 @@ class TitleBarWidget(QWidget):
 
         traffic = QHBoxLayout()
         traffic.setSpacing(8)
-        for color in ("#ff5f57", "#febc2e", "#28c840"):
-            dot = QFrame()
-            dot.setFixedSize(12, 12)
-            dot.setStyleSheet(f"border-radius: 6px; background: {color};")
-            traffic.addWidget(dot)
+        self._close_button = _make_button(
+            "",
+            "閉じる",
+            object_name="trafficCloseButton",
+            fixed_size=(12, 12),
+        )
+        self._close_button.clicked.connect(self.close_requested.emit)
+        traffic.addWidget(self._close_button)
+
+        self._minimize_button = _make_button(
+            "",
+            "システムトレイに最小化",
+            object_name="trafficMinimizeButton",
+            fixed_size=(12, 12),
+        )
+        self._minimize_button.clicked.connect(self.minimize_requested.emit)
+        traffic.addWidget(self._minimize_button)
+
+        self._maximize_button = _make_button(
+            "",
+            "最大化 / 復元",
+            object_name="trafficMaximizeButton",
+            fixed_size=(12, 12),
+        )
+        self._maximize_button.clicked.connect(self.maximize_requested.emit)
+        traffic.addWidget(self._maximize_button)
         layout.addLayout(traffic)
 
         title_block = QHBoxLayout()

@@ -70,6 +70,8 @@ class Application:
         # メインウィンドウ
         self.main_window.copy_requested.connect(self._on_copy_requested)
         self.main_window.settings_requested.connect(self._show_settings)
+        self.main_window.close_requested.connect(self._quit)
+        self.main_window.minimize_requested.connect(self._minimize_to_tray)
 
         # クリップボード監視
         self.monitor.history_added.connect(self._on_history_added)
@@ -105,6 +107,10 @@ class Application:
         """設定ダイアログを表示"""
         self.settings_dialog.exec()
 
+    def _minimize_to_tray(self) -> None:
+        """メインウィンドウをシステムトレイに格納する。"""
+        self.main_window.hide()
+
     def _on_copy_requested(self, content_type: str, content: str, image_path: str) -> None:
         """コピーリクエスト時"""
         self.monitor.copy_to_clipboard(content_type, content, image_path)
@@ -123,6 +129,7 @@ class Application:
     def _quit(self) -> None:
         """アプリケーションを終了"""
         self.monitor.stop()
+        self.main_window.hide()
         self.tray_icon.hide()
         self.app.quit()
 

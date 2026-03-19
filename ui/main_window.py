@@ -42,6 +42,8 @@ from ui.widgets import (
 class MainWindow(QMainWindow):
     """Figma Make の見た目を再現したメインウィンドウ。"""
 
+    close_requested = pyqtSignal()
+    minimize_requested = pyqtSignal()
     copy_requested = pyqtSignal(str, str, str)
     settings_requested = pyqtSignal()
 
@@ -140,6 +142,9 @@ class MainWindow(QMainWindow):
         body.addWidget(self._detail_stack, 1)
 
     def _connect_signals(self) -> None:
+        self._title_bar.close_requested.connect(self.close_requested.emit)
+        self._title_bar.minimize_requested.connect(self.minimize_requested.emit)
+        self._title_bar.maximize_requested.connect(self.toggle_maximize)
         self._title_bar.new_requested.connect(self._open_new_dialog)
         self._title_bar.settings_requested.connect(self.settings_requested.emit)
 
@@ -548,6 +553,13 @@ class MainWindow(QMainWindow):
         path = QPainterPath()
         path.addRoundedRect(QRectF(self.rect()), self._corner_radius, self._corner_radius)
         self.setMask(QRegion(path.toFillPolygon().toPolygon()))
+
+    def toggle_maximize(self) -> None:
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+        QTimer.singleShot(0, self._update_window_mask)
 
     def closeEvent(self, event) -> None:  # noqa: N802
         event.ignore()

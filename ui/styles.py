@@ -96,6 +96,55 @@ def get_stylesheet(dark: bool = False) -> str:
             font-size: 11px;
         }}
 
+        QPushButton#trafficCloseButton,
+        QPushButton#trafficMinimizeButton,
+        QPushButton#trafficMaximizeButton {{
+            background-color: transparent;
+            border: none;
+            border-radius: 6px;
+            min-width: 12px;
+            max-width: 12px;
+            min-height: 12px;
+            max-height: 12px;
+            padding: 0;
+        }}
+
+        QPushButton#trafficCloseButton {{
+            background-color: #ff5f57;
+        }}
+
+        QPushButton#trafficMinimizeButton {{
+            background-color: #febc2e;
+        }}
+
+        QPushButton#trafficMaximizeButton {{
+            background-color: #28c840;
+        }}
+
+        QPushButton#trafficCloseButton:hover {{
+            background-color: #ff7a73;
+        }}
+
+        QPushButton#trafficMinimizeButton:hover {{
+            background-color: #ffd05a;
+        }}
+
+        QPushButton#trafficMaximizeButton:hover {{
+            background-color: #4dde58;
+        }}
+
+        QPushButton#trafficCloseButton:pressed {{
+            background-color: #e24a43;
+        }}
+
+        QPushButton#trafficMinimizeButton:pressed {{
+            background-color: #e9b427;
+        }}
+
+        QPushButton#trafficMaximizeButton:pressed {{
+            background-color: #23aa35;
+        }}
+
         QFrame#sidebar {{
             background-color: {t["surface"]};
             border-right: 1px solid {t["border"]};
