@@ -48,6 +48,7 @@ def _make_button(
     fixed_size: tuple[int, int] | None = None,
     checkable: bool = False,
     checked: bool = False,
+    use_icon_font: bool = False,
 ) -> QPushButton:
     button = QPushButton(text)
     button.setObjectName(object_name)
@@ -55,7 +56,8 @@ def _make_button(
     button.setCheckable(checkable)
     button.setChecked(checked)
     button.setCursor(Qt.CursorShape.PointingHandCursor)
-    button.setFont(icon_font(11))
+    if use_icon_font:
+        button.setFont(icon_font(11))
     if fixed_size:
         button.setFixedSize(*fixed_size)
     return button
@@ -147,11 +149,17 @@ class TitleBarWidget(QWidget):
         layout.addLayout(title_block)
         layout.addStretch(1)
 
-        new_button = _make_button(f"{icon_glyph('add')} 新規", "新しいアイテムを追加", fixed_size=(96, 30))
+        new_button = _make_button("＋ 新規", "新しいアイテムを追加", fixed_size=(96, 30))
         new_button.clicked.connect(self.new_requested.emit)
         layout.addWidget(new_button)
 
-        settings_button = _make_button(icon_glyph("settings"), "設定", object_name="iconButton", fixed_size=(30, 30))
+        settings_button = _make_button(
+            icon_glyph("settings"),
+            "設定",
+            object_name="iconButton",
+            fixed_size=(30, 30),
+            use_icon_font=True,
+        )
         settings_button.clicked.connect(self.settings_requested.emit)
         layout.addWidget(settings_button)
 
