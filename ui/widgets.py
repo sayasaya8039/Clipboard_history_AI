@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from PyQt6.QtCore import QPoint, Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QFontMetrics, QTextLayout, QTextOption
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -251,6 +251,70 @@ class SearchField(QFrame):
         return self._line_edit.text()
 
 
+class ClampedTextLabel(QLabel):
+    """指定行数で文字列を収めるラベル。"""
+
+    def __init__(self, max_lines: int = 2, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self._max_lines = max(1, max_lines)
+        self._raw_text = ""
+        self.setTextFormat(Qt.TextFormat.PlainText)
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.setWordWrap(False)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def setText(self, text: str) -> None:  # noqa: N802
+        self._raw_text = text or ""
+        self.setToolTip(self._raw_text)
+        self._refresh_text()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._refresh_text()
+
+    def _refresh_text(self) -> None:
+        if not self._raw_text:
+            super().setText("")
+            self.setMaximumHeight(0)
+            return
+
+        available_width = max(1, self.contentsRect().width())
+        metrics = QFontMetrics(self.font())
+        lines = self._layout_lines(self._raw_text, available_width, metrics)
+        super().setText("\n".join(lines))
+        self.setMaximumHeight(metrics.lineSpacing() * len(lines))
+
+    def _layout_lines(self, text: str, width: int, metrics: QFontMetrics) -> list[str]:
+        layout = QTextLayout(text, self.font())
+        option = QTextOption()
+        option.setWrapMode(QTextOption.WrapMode.WrapAtWordBoundaryOrAnywhere)
+        layout.setTextOption(option)
+
+        lines: list[str] = []
+        layout.beginLayout()
+        try:
+            while len(lines) < self._max_lines:
+                line = layout.createLine()
+                if not line.isValid():
+                    break
+
+                line.setLineWidth(width)
+                start = line.textStart()
+                length = line.textLength()
+                segment = text[start : start + length].strip()
+
+                if len(lines) == self._max_lines - 1:
+                    remaining = text[start:].strip()
+                    if remaining and remaining != segment:
+                        segment = metrics.elidedText(remaining, Qt.TextElideMode.ElideRight, width)
+
+                lines.append(segment)
+        finally:
+            layout.endLayout()
+
+        return lines or [text]
+
+
 class BaseCard(QFrame):
     """選択可能なカードの共通基底。"""
 
@@ -297,11 +361,8 @@ class HistoryCard(BaseCard):
         content = QVBoxLayout()
         content.setSpacing(8)
 
-        self._preview = QLabel()
+        self._preview = ClampedTextLabel(2)
         self._preview.setObjectName("cardPreview")
-        self._preview.setWordWrap(True)
-        self._preview.setMaximumHeight(42)
-        self._preview.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         content.addWidget(self._preview)
 
         meta = QHBoxLayout()
