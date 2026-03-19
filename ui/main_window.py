@@ -1,381 +1,535 @@
 """メインウィンドウモジュール"""
-import webbrowser
+from __future__ import annotations
+
+import uuid
 from datetime import datetime
-from typing import Optional
-from pathlib import Path
+from typing import Any, Optional
 
+from PyQt6.QtCore import QTimer, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QListWidget, QListWidgetItem, QLabel,
-    QPushButton, QComboBox, QMenu, QFrame, QSizePolicy,
-    QMessageBox
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QScrollArea,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+    QDialog,
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer
-from PyQt6.QtGui import QPixmap, QIcon, QAction, QCursor
 
-from config import APP_NAME, CATEGORIES
-from database import get_history, delete_history, toggle_favorite, clear_all_history
-from categorizer import get_category_icon, get_category_display_name
-
-
-class HistoryItemWidget(QFrame):
-    """履歴アイテムのカスタムウィジェット"""
-
-    copy_clicked = pyqtSignal(dict)  # コピーボタンクリック
-    favorite_clicked = pyqtSignal(dict)  # お気に入りボタンクリック
-    delete_clicked = pyqtSignal(dict)  # 削除ボタンクリック
-    open_url_clicked = pyqtSignal(dict)  # URL開くボタンクリック
-
-    def __init__(self, data: dict, parent: Optional[QWidget] = None):
-        super().__init__(parent)
-        self.data = data
-        self._setup_ui()
-
-    def _setup_ui(self) -> None:
-        """UIをセットアップ"""
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
-
-        # 左側：コンテンツ
-        content_layout = QVBoxLayout()
-        content_layout.setSpacing(4)
-
-        # カテゴリとタイムスタンプ
-        header_layout = QHBoxLayout()
-
-        # カテゴリアイコンと名前
-        category = self.data.get("category", "text")
-        category_label = QLabel(f"{get_category_icon(category)} {get_category_display_name(category)}")
-        category_label.setProperty("class", "subtitle")
-        header_layout.addWidget(category_label)
-
-        header_layout.addStretch()
-
-        # タイムスタンプ
-        created_at = self.data.get("created_at", "")
-        if created_at:
-            try:
-                dt = datetime.fromisoformat(created_at)
-                time_str = dt.strftime("%Y/%m/%d %H:%M")
-            except Exception:
-                time_str = created_at
-        else:
-            time_str = ""
-        time_label = QLabel(time_str)
-        time_label.setProperty("class", "subtitle")
-        header_layout.addWidget(time_label)
-
-        content_layout.addLayout(header_layout)
-
-        # コンテンツ表示
-        content_type = self.data.get("content_type", "text")
-
-        if content_type == "image":
-            # 画像サムネイル
-            image_path = self.data.get("image_path", "")
-            if image_path and Path(image_path).exists():
-                pixmap = QPixmap(image_path)
-                if not pixmap.isNull():
-                    scaled = pixmap.scaled(
-                        100, 60,
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation
-                    )
-                    image_label = QLabel()
-                    image_label.setPixmap(scaled)
-                    content_layout.addWidget(image_label)
-                else:
-                    content_layout.addWidget(QLabel("[画像を読み込めません]"))
-            else:
-                content_layout.addWidget(QLabel("[画像ファイルが見つかりません]"))
-        else:
-            # テキストコンテンツ
-            content = self.data.get("content", "")
-            # 長いテキストは省略
-            display_text = content[:200] + "..." if len(content) > 200 else content
-            # 改行を含む場合は最初の3行まで
-            lines = display_text.split("\n")
-            if len(lines) > 3:
-                display_text = "\n".join(lines[:3]) + "\n..."
-
-            content_label = QLabel(display_text)
-            content_label.setWordWrap(True)
-            content_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-
-            # URLカテゴリの場合はクリック可能にする
-            if category == "url":
-                content_label.setCursor(Qt.CursorShape.PointingHandCursor)
-                content_label.setStyleSheet("QLabel:hover { text-decoration: underline; color: #2196F3; }")
-                content_label.mousePressEvent = lambda e: self.open_url_clicked.emit(self.data)
-
-            content_layout.addWidget(content_label)
-
-        layout.addLayout(content_layout, 1)
-
-        # 右側：アクションボタン
-        button_layout = QVBoxLayout()
-        button_layout.setSpacing(4)
-
-        # URLの場合は「開く」ボタンを追加
-        if category == "url":
-            open_btn = QPushButton("🔗")
-            open_btn.setProperty("class", "icon")
-            open_btn.setToolTip("ブラウザで開く")
-            open_btn.clicked.connect(lambda: self.open_url_clicked.emit(self.data))
-            button_layout.addWidget(open_btn)
-
-        # お気に入りボタン
-        is_favorite = self.data.get("is_favorite", False)
-        fav_btn = QPushButton("★" if is_favorite else "☆")
-        fav_btn.setProperty("class", "icon")
-        fav_btn.setToolTip("お気に入り")
-        fav_btn.clicked.connect(lambda: self.favorite_clicked.emit(self.data))
-        button_layout.addWidget(fav_btn)
-
-        # コピーボタン
-        copy_btn = QPushButton("📋")
-        copy_btn.setProperty("class", "icon")
-        copy_btn.setToolTip("コピー")
-        copy_btn.clicked.connect(lambda: self.copy_clicked.emit(self.data))
-        button_layout.addWidget(copy_btn)
-
-        # 削除ボタン
-        delete_btn = QPushButton("🗑")
-        delete_btn.setProperty("class", "icon")
-        delete_btn.setToolTip("削除")
-        delete_btn.clicked.connect(lambda: self.delete_clicked.emit(self.data))
-        button_layout.addWidget(delete_btn)
-
-        button_layout.addStretch()
-
-        layout.addLayout(button_layout)
+from config import APP_NAME, APP_VERSION
+from database import delete_history, get_history, toggle_favorite
+from ui.detail_panels import HistoryDetailPanel, SnippetDetailPanel
+from ui.dialogs import NewItemDialog, NewSnippetDialog
+from ui.sample_data import (
+    build_history_samples,
+    build_snippet_samples,
+    normalize_preview,
+    parse_datetime,
+)
+from ui.widgets import (
+    HistoryCard,
+    SegmentedTabs,
+    SearchField,
+    SnippetCard,
+    TitleBarWidget,
+    _clear_layout,
+)
 
 
 class MainWindow(QMainWindow):
-    """メインウィンドウクラス"""
+    """Figma Make の見た目を再現したメインウィンドウ。"""
 
-    copy_requested = pyqtSignal(str, str, str)  # content_type, content, image_path
+    copy_requested = pyqtSignal(str, str, str)
     settings_requested = pyqtSignal()
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
 
         self.setWindowTitle(APP_NAME)
-        self.setMinimumSize(400, 500)
-        self.resize(450, 600)
-
-        # ウィンドウフラグ設定（タスクバーに表示しない）
+        self.setMinimumSize(1200, 760)
+        self.resize(1440, 900)
         self.setWindowFlags(
-            Qt.WindowType.Window |
-            Qt.WindowType.WindowStaysOnTopHint
+            Qt.WindowType.Window
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
         )
 
-        self._search_timer = QTimer()
+        self._has_centered_once = False
+        self._search_query = ""
+        self._active_tab = "history"
+        self._selected_history_id: str | None = None
+        self._selected_snippet_id: str | None = None
+        self._manual_history_items: list[dict[str, Any]] = []
+        self._manual_snippet_items: list[dict[str, Any]] = []
+        self._history_seed = build_history_samples()
+        self._snippet_seed = build_snippet_samples()
+
+        self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
-        self._search_timer.timeout.connect(self._do_search)
+        self._search_timer.timeout.connect(self._refresh_visible_content)
 
-        self._current_category: Optional[str] = None
-        self._current_search: str = ""
-        self._favorites_only: bool = False
+        self._build_ui()
+        self._connect_signals()
+        self._refresh_visible_content()
 
-        self._setup_ui()
+    def _build_ui(self) -> None:
+        central = QWidget()
+        self.setCentralWidget(central)
 
-    def _setup_ui(self) -> None:
-        """UIをセットアップ"""
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+        root = QVBoxLayout(central)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
-        layout = QVBoxLayout(central_widget)
-        layout.setContentsMargins(16, 16, 16, 16)
-        layout.setSpacing(12)
+        self._title_bar = TitleBarWidget("Coppy", f"v{APP_VERSION}")
+        root.addWidget(self._title_bar)
 
-        # ヘッダー
-        header_layout = QHBoxLayout()
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(0)
+        root.addLayout(body, 1)
 
-        title_label = QLabel(APP_NAME)
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
-        header_layout.addWidget(title_label)
+        self._sidebar = QFrame()
+        self._sidebar.setObjectName("sidebar")
+        self._sidebar.setFixedWidth(280)
+        sidebar_layout = QVBoxLayout(self._sidebar)
+        sidebar_layout.setContentsMargins(16, 16, 16, 0)
+        sidebar_layout.setSpacing(12)
 
-        header_layout.addStretch()
+        self._tabs = SegmentedTabs()
+        sidebar_layout.addWidget(self._tabs)
 
-        # 設定ボタン
-        settings_btn = QPushButton("⚙")
-        settings_btn.setProperty("class", "icon")
-        settings_btn.setToolTip("設定")
-        settings_btn.clicked.connect(self.settings_requested.emit)
-        header_layout.addWidget(settings_btn)
+        self._search = SearchField()
+        sidebar_layout.addWidget(self._search)
 
-        layout.addLayout(header_layout)
+        self._list_scroll = QScrollArea()
+        self._list_scroll.setObjectName("listScroll")
+        self._list_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._list_scroll.setWidgetResizable(True)
+        self._list_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        # 検索バー
-        search_layout = QHBoxLayout()
+        self._list_host = QWidget()
+        self._list_layout = QVBoxLayout(self._list_host)
+        self._list_layout.setContentsMargins(0, 0, 0, 0)
+        self._list_layout.setSpacing(10)
+        self._list_layout.addStretch(1)
+        self._list_scroll.setWidget(self._list_host)
+        sidebar_layout.addWidget(self._list_scroll, 1)
 
-        self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("検索...")
-        self._search_input.textChanged.connect(self._on_search_changed)
-        search_layout.addWidget(self._search_input)
+        self._sidebar_footer = QFrame()
+        self._sidebar_footer.setObjectName("sidebarFooter")
+        footer_layout = QHBoxLayout(self._sidebar_footer)
+        footer_layout.setContentsMargins(0, 12, 0, 14)
+        self._count_label = QLabel("0 アイテム")
+        self._count_label.setObjectName("footerText")
+        footer_layout.addWidget(self._count_label)
+        footer_layout.addStretch(1)
+        sidebar_layout.addWidget(self._sidebar_footer)
 
-        layout.addLayout(search_layout)
+        body.addWidget(self._sidebar)
 
-        # フィルターバー
-        filter_layout = QHBoxLayout()
+        self._detail_stack = QStackedWidget()
+        self._detail_stack.setObjectName("detailStack")
+        self._history_detail = HistoryDetailPanel()
+        self._snippet_detail = SnippetDetailPanel()
+        self._detail_stack.addWidget(self._history_detail)
+        self._detail_stack.addWidget(self._snippet_detail)
+        body.addWidget(self._detail_stack, 1)
 
-        # カテゴリフィルター
-        self._category_combo = QComboBox()
-        self._category_combo.addItem("すべて", None)
-        for key, name in CATEGORIES.items():
-            self._category_combo.addItem(f"{get_category_icon(key)} {name}", key)
-        self._category_combo.currentIndexChanged.connect(self._on_category_changed)
-        filter_layout.addWidget(self._category_combo)
+    def _connect_signals(self) -> None:
+        self._title_bar.new_requested.connect(self._open_new_dialog)
+        self._title_bar.settings_requested.connect(self.settings_requested.emit)
 
-        filter_layout.addStretch()
+        self._tabs.tab_changed.connect(self._on_tab_changed)
+        self._search.text_changed.connect(self._on_search_changed)
 
-        # お気に入りフィルター
-        self._fav_btn = QPushButton("☆ お気に入り")
-        self._fav_btn.setProperty("class", "secondary")
-        self._fav_btn.setCheckable(True)
-        self._fav_btn.clicked.connect(self._on_favorites_toggled)
-        filter_layout.addWidget(self._fav_btn)
+        self._history_detail.copy_requested.connect(self._copy_selected_history)
+        self._history_detail.delete_requested.connect(self._delete_selected_history)
+        self._history_detail.pin_requested.connect(self._toggle_selected_history_pin)
 
-        # クリアボタン
-        clear_btn = QPushButton("履歴をクリア")
-        clear_btn.setProperty("class", "secondary")
-        clear_btn.clicked.connect(self._on_clear_clicked)
-        filter_layout.addWidget(clear_btn)
+        self._snippet_detail.copy_requested.connect(self._copy_selected_snippet)
+        self._snippet_detail.delete_requested.connect(self._delete_selected_snippet)
+        self._snippet_detail.edit_requested.connect(self._edit_selected_snippet)
+        self._snippet_detail.favorite_requested.connect(self._toggle_selected_snippet_favorite)
 
-        layout.addLayout(filter_layout)
-
-        # 履歴リスト
-        self._list_widget = QListWidget()
-        self._list_widget.setSpacing(2)
-        self._list_widget.itemDoubleClicked.connect(self._on_item_double_clicked)
-        layout.addWidget(self._list_widget)
-
-        # ステータスバー
-        self._status_label = QLabel("")
-        self._status_label.setProperty("class", "subtitle")
-        layout.addWidget(self._status_label)
+    def _on_tab_changed(self, tab: str) -> None:
+        self._active_tab = tab
+        self._refresh_visible_content()
 
     def _on_search_changed(self, text: str) -> None:
-        """検索テキスト変更時"""
-        self._current_search = text
-        # デバウンス（300ms後に検索実行）
-        self._search_timer.start(300)
+        self._search_query = text
+        self._search_timer.start(220)
 
-    def _do_search(self) -> None:
-        """検索実行"""
-        self.refresh_history()
-
-    def _on_category_changed(self, index: int) -> None:
-        """カテゴリ変更時"""
-        self._current_category = self._category_combo.currentData()
-        self.refresh_history()
-
-    def _on_favorites_toggled(self, checked: bool) -> None:
-        """お気に入りフィルタートグル"""
-        self._favorites_only = checked
-        self._fav_btn.setText("★ お気に入り" if checked else "☆ お気に入り")
-        self.refresh_history()
-
-    def _on_clear_clicked(self) -> None:
-        """履歴クリアボタンクリック"""
-        reply = QMessageBox.question(
-            self,
-            "確認",
-            "お気に入り以外の履歴をすべて削除しますか？",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No
-        )
-
-        if reply == QMessageBox.StandardButton.Yes:
-            count = clear_all_history()
-            self._status_label.setText(f"{count}件の履歴を削除しました")
-            self.refresh_history()
-
-    def _on_item_double_clicked(self, item: QListWidgetItem) -> None:
-        """アイテムダブルクリック時"""
-        widget = self._list_widget.itemWidget(item)
-        if isinstance(widget, HistoryItemWidget):
-            self._copy_item(widget.data)
-
-    def _copy_item(self, data: dict) -> None:
-        """アイテムをコピー"""
-        content_type = data.get("content_type", "text")
-        content = data.get("content", "")
-        image_path = data.get("image_path", "")
-        self.copy_requested.emit(content_type, content, image_path)
-        self._status_label.setText("コピーしました")
-
-    def _favorite_item(self, data: dict) -> None:
-        """アイテムのお気に入りをトグル"""
-        history_id = data.get("id")
-        if history_id:
-            toggle_favorite(history_id)
-            self.refresh_history()
-
-    def _delete_item(self, data: dict) -> None:
-        """アイテムを削除"""
-        history_id = data.get("id")
-        if history_id:
-            delete_history(history_id)
-            self.refresh_history()
-
-    def _open_url(self, data: dict) -> None:
-        """URLをブラウザで開く"""
-        content = data.get("content", "")
-        if content:
-            # http/https がない場合は追加
-            url = content
-            if not url.startswith(("http://", "https://", "file://")):
-                url = "https://" + url
-            try:
-                webbrowser.open(url)
-                self._status_label.setText("ブラウザで開きました")
-            except Exception as e:
-                self._status_label.setText(f"URLを開けませんでした: {e}")
+    def _refresh_visible_content(self) -> None:
+        if self._active_tab == "history":
+            self._refresh_history_view()
+            self._detail_stack.setCurrentWidget(self._history_detail)
+        else:
+            self._refresh_snippet_view()
+            self._detail_stack.setCurrentWidget(self._snippet_detail)
 
     def refresh_history(self) -> None:
-        """履歴を更新"""
-        self._list_widget.clear()
+        """外部更新時に履歴一覧だけ再描画する。"""
+        if self._active_tab != "history":
+            return
 
-        history = get_history(
-            limit=200,
-            category=self._current_category,
-            search_query=self._current_search if self._current_search else None,
-            favorites_only=self._favorites_only,
+        self._refresh_history_view()
+
+    def refresh_snippets(self) -> None:
+        """外部更新時に定型文一覧だけ再描画する。"""
+        if self._active_tab != "snippets":
+            return
+
+        self._refresh_snippet_view()
+
+    def _refresh_history_view(self) -> None:
+        items = self._filter_history_items(self._history_items())
+        if not any(str(item["id"]) == self._selected_history_id for item in items):
+            self._selected_history_id = str(items[0]["id"]) if items else None
+
+        self._populate_cards(items, self._selected_history_id, kind="history")
+        self._count_label.setText(f"{len(items)} アイテム")
+        selected = next((item for item in items if str(item["id"]) == self._selected_history_id), None)
+        self._history_detail.set_item(selected)
+
+    def _refresh_snippet_view(self) -> None:
+        items = self._filter_snippet_items(self._snippet_items())
+        if not any(str(item["id"]) == self._selected_snippet_id for item in items):
+            self._selected_snippet_id = str(items[0]["id"]) if items else None
+
+        self._populate_cards(items, self._selected_snippet_id, kind="snippet")
+        self._count_label.setText(f"{len(items)} 定型文")
+        selected = next((item for item in items if str(item["id"]) == self._selected_snippet_id), None)
+        self._snippet_detail.set_item(selected)
+
+    def _populate_cards(
+        self,
+        items: list[dict[str, Any]],
+        selected_id: str | None,
+        *,
+        kind: str,
+    ) -> None:
+        _clear_layout(self._list_layout)
+
+        if not items:
+            self._list_layout.addStretch(1)
+            empty = QLabel("検索結果がありません")
+            empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            empty.setObjectName("emptyStateLabel")
+            self._list_layout.addWidget(empty)
+            self._list_layout.addStretch(1)
+            return
+
+        for item in items:
+            card = HistoryCard(item) if kind == "history" else SnippetCard(item)
+            card.clicked.connect(self._on_card_clicked)
+            card.set_selected(str(item.get("id")) == selected_id)
+            self._list_layout.addWidget(card)
+
+        self._list_layout.addStretch(1)
+
+    def _on_card_clicked(self, item_id: str) -> None:
+        if self._active_tab == "history":
+            self._selected_history_id = item_id
+        else:
+            self._selected_snippet_id = item_id
+        self._refresh_visible_content()
+
+    def _history_items(self) -> list[dict[str, Any]]:
+        db_rows = get_history(limit=200, category=None, search_query=None, favorites_only=False)
+        items = [self._normalize_history_row(row) for row in db_rows]
+        items = [*self._manual_history_items, *items]
+
+        if not items:
+            items = [dict(sample) for sample in self._history_seed]
+
+        return self._sort_by_timestamp(items, "created_at")
+
+    def _snippet_items(self) -> list[dict[str, Any]]:
+        items = [*self._snippet_seed, *self._manual_snippet_items]
+        return self._sort_by_timestamp(items, "created_at")
+
+    def _filter_history_items(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        query = self._search_query.strip().lower()
+        if not query:
+            return items
+
+        result = []
+        for item in items:
+            haystack = " ".join(
+                str(value)
+                for value in (
+                    item.get("content"),
+                    item.get("preview"),
+                    item.get("app"),
+                    item.get("content_type"),
+                    item.get("category"),
+                )
+                if value
+            ).lower()
+            if query in haystack:
+                result.append(item)
+        return result
+
+    def _filter_snippet_items(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        query = self._search_query.strip().lower()
+        if not query:
+            return items
+
+        result = []
+        for item in items:
+            tags = ", ".join(str(tag) for tag in item.get("tags") or [])
+            haystack = " ".join(
+                str(value)
+                for value in (
+                    item.get("name"),
+                    item.get("content"),
+                    item.get("preview"),
+                    item.get("description"),
+                    tags,
+                )
+                if value
+            ).lower()
+            if query in haystack:
+                result.append(item)
+        return result
+
+    def _sort_by_timestamp(self, items: list[dict[str, Any]], key: str) -> list[dict[str, Any]]:
+        return sorted(
+            items,
+            key=lambda item: parse_datetime(item.get(key)) or datetime.min,
+            reverse=True,
         )
 
-        for item_data in history:
-            item = QListWidgetItem(self._list_widget)
-            widget = HistoryItemWidget(item_data)
+    def _normalize_history_row(self, row: dict[str, Any]) -> dict[str, Any]:
+        storage_id = row.get("id")
+        content_type = str(row.get("content_type") or row.get("type") or "text")
+        content = str(row.get("content") or "")
+        preview = str(row.get("preview") or normalize_preview(content))
+        created_at = parse_datetime(row.get("created_at")) or datetime.now()
+        return {
+            "id": f"db-history-{storage_id}",
+            "storage_id": storage_id,
+            "content_type": content_type,
+            "type": content_type,
+            "content": content,
+            "preview": preview,
+            "app": row.get("app") or None,
+            "category": row.get("category") or content_type,
+            "is_favorite": bool(row.get("is_favorite")),
+            "image_path": row.get("image_path") or "",
+            "created_at": created_at,
+        }
 
-            # シグナル接続
-            widget.copy_clicked.connect(self._copy_item)
-            widget.favorite_clicked.connect(self._favorite_item)
-            widget.delete_clicked.connect(self._delete_item)
-            widget.open_url_clicked.connect(self._open_url)
+    def _open_new_dialog(self) -> None:
+        if self._active_tab == "history":
+            dialog = NewItemDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                payload = dialog.get_payload()
+                if payload:
+                    self._add_manual_history_item(payload)
+        else:
+            dialog = NewSnippetDialog(self)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                payload = dialog.get_payload()
+                if payload:
+                    self._add_manual_snippet(payload)
 
-            item.setSizeHint(widget.sizeHint())
-            self._list_widget.addItem(item)
-            self._list_widget.setItemWidget(item, widget)
+    def _add_manual_history_item(self, payload: dict[str, Any]) -> None:
+        item_id = f"manual-history-{uuid.uuid4().hex[:8]}"
+        content = str(payload.get("content") or "")
+        item = {
+            "id": item_id,
+            "content_type": payload.get("content_type") or "text",
+            "type": payload.get("type") or payload.get("content_type") or "text",
+            "content": content,
+            "preview": str(payload.get("preview") or normalize_preview(content)),
+            "app": payload.get("app") or None,
+            "category": payload.get("category") or payload.get("content_type") or "text",
+            "is_favorite": bool(payload.get("is_favorite", False)),
+            "image_path": payload.get("image_path") or "",
+            "created_at": datetime.now(),
+        }
+        self._manual_history_items = [item, *self._manual_history_items]
+        self._selected_history_id = item_id
+        self._refresh_history_view()
 
-        self._status_label.setText(f"{len(history)}件の履歴")
+    def _add_manual_snippet(self, payload: dict[str, Any]) -> None:
+        item_id = f"manual-snippet-{uuid.uuid4().hex[:8]}"
+        item = {
+            "id": item_id,
+            "name": payload.get("name") or "",
+            "content": payload.get("content") or "",
+            "description": payload.get("description") or None,
+            "tags": list(payload.get("tags") or []),
+            "favorite": bool(payload.get("favorite", False)),
+            "created_at": datetime.now(),
+        }
+        item["preview"] = str(payload.get("preview") or normalize_preview(str(item["content"])))
+        self._manual_snippet_items = [item, *self._manual_snippet_items]
+        self._selected_snippet_id = item_id
+        self._refresh_snippet_view()
 
-    def showEvent(self, event) -> None:
-        """ウィンドウ表示時"""
+    def _current_history_item(self) -> dict[str, Any] | None:
+        selected = self._selected_history_id
+        for item in self._history_items():
+            if str(item.get("id")) == selected:
+                return item
+        return None
+
+    def _current_snippet_item(self) -> dict[str, Any] | None:
+        selected = self._selected_snippet_id
+        for item in self._snippet_items():
+            if str(item.get("id")) == selected:
+                return item
+        return None
+
+    def _copy_selected_history(self) -> None:
+        item = self._current_history_item()
+        if not item:
+            return
+        self.copy_requested.emit(
+            str(item.get("content_type") or "text"),
+            str(item.get("content") or ""),
+            str(item.get("image_path") or ""),
+        )
+
+    def _copy_selected_snippet(self) -> None:
+        item = self._current_snippet_item()
+        if not item:
+            return
+        self.copy_requested.emit("text", str(item.get("content") or ""), "")
+
+    def _delete_selected_history(self) -> None:
+        item = self._current_history_item()
+        if not item:
+            return
+
+        item_id = str(item.get("id"))
+        if item_id.startswith("manual-history-"):
+            self._manual_history_items = [
+                history_item for history_item in self._manual_history_items if str(history_item.get("id")) != item_id
+            ]
+        else:
+            storage_id = item.get("storage_id")
+            if storage_id is not None:
+                delete_history(int(storage_id))
+
+        self._selected_history_id = None
+        self._refresh_history_view()
+
+    def _delete_selected_snippet(self) -> None:
+        item = self._current_snippet_item()
+        if not item:
+            return
+
+        item_id = str(item.get("id"))
+        self._manual_snippet_items = [
+            snippet for snippet in self._manual_snippet_items if str(snippet.get("id")) != item_id
+        ]
+        self._snippet_seed = [
+            snippet for snippet in self._snippet_seed if str(snippet.get("id")) != item_id
+        ]
+        self._selected_snippet_id = None
+        self._refresh_snippet_view()
+
+    def _edit_selected_snippet(self) -> None:
+        item = self._current_snippet_item()
+        if not item:
+            return
+
+        dialog = NewSnippetDialog(self, item)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            payload = dialog.get_payload()
+            if payload:
+                self._update_snippet_item(payload)
+
+    def _toggle_selected_snippet_favorite(self) -> None:
+        item = self._current_snippet_item()
+        if not item:
+            return
+
+        item_id = str(item.get("id"))
+        if item_id.startswith("manual-snippet-"):
+            for snippet in self._manual_snippet_items:
+                if str(snippet.get("id")) == item_id:
+                    snippet["favorite"] = not bool(snippet.get("favorite"))
+                    break
+        else:
+            for snippet in self._snippet_seed:
+                if str(snippet.get("id")) == item_id:
+                    snippet["favorite"] = not bool(snippet.get("favorite"))
+                    break
+
+        self._refresh_snippet_view()
+
+    def _toggle_selected_history_pin(self) -> None:
+        item = self._current_history_item()
+        if not item:
+            return
+
+        item_id = str(item.get("id"))
+        if item_id.startswith("manual-history-"):
+            for history_item in self._manual_history_items:
+                if str(history_item.get("id")) == item_id:
+                    history_item["is_favorite"] = not bool(history_item.get("is_favorite"))
+                    break
+        else:
+            storage_id = item.get("storage_id")
+            if storage_id is not None:
+                toggle_favorite(int(storage_id))
+
+        self._refresh_history_view()
+
+    def _update_snippet_item(self, payload: dict[str, Any]) -> None:
+        item_id = str(payload.get("id") or "")
+        created_at = payload.get("created_at") or datetime.now()
+        updated = {
+            "id": item_id,
+            "name": payload.get("name") or "",
+            "content": payload.get("content") or "",
+            "description": payload.get("description") or None,
+            "tags": list(payload.get("tags") or []),
+            "favorite": bool(payload.get("favorite", False)),
+            "created_at": created_at,
+            "preview": str(payload.get("preview") or normalize_preview(str(payload.get("content") or ""))),
+        }
+
+        replaced = False
+        for index, snippet in enumerate(self._manual_snippet_items):
+            if str(snippet.get("id")) == item_id:
+                self._manual_snippet_items[index] = updated
+                replaced = True
+                break
+
+        if not replaced:
+            for index, snippet in enumerate(self._snippet_seed):
+                if str(snippet.get("id")) == item_id:
+                    self._snippet_seed[index] = updated
+                    replaced = True
+                    break
+
+        if replaced:
+            self._selected_snippet_id = item_id
+            self._refresh_snippet_view()
+
+    def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
-        self.refresh_history()
+        self._refresh_visible_content()
+        if not self._has_centered_once:
+            self._center_on_screen()
+            self._has_centered_once = True
 
-        # 画面中央に表示
+    def _center_on_screen(self) -> None:
         screen = self.screen()
-        if screen:
-            screen_geometry = screen.availableGeometry()
-            x = (screen_geometry.width() - self.width()) // 2
-            y = (screen_geometry.height() - self.height()) // 2
-            self.move(x, y)
+        if not screen:
+            return
+        geometry = screen.availableGeometry()
+        x = geometry.x() + (geometry.width() - self.width()) // 2
+        y = geometry.y() + (geometry.height() - self.height()) // 2
+        self.move(max(geometry.x(), x), max(geometry.y(), y))
 
-    def closeEvent(self, event) -> None:
-        """ウィンドウを閉じる時は非表示にする"""
+    def closeEvent(self, event) -> None:  # noqa: N802
         event.ignore()
         self.hide()

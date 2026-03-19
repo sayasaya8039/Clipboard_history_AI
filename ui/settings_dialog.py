@@ -21,7 +21,8 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("設定")
-        self.setMinimumWidth(450)
+        self.setMinimumWidth(700)
+        self.resize(720, 700)
         self.setModal(True)
         # メインウィンドウより前面に表示
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint)
@@ -134,7 +135,7 @@ class SettingsDialog(QDialog):
         self._gemini_key_input.setText(get_setting("gemini_api_key", ""))
 
         # テーマ
-        theme = get_setting("theme", "system")
+        theme = get_setting("theme", "dark")
         theme_index = self._theme_combo.findData(theme)
         if theme_index >= 0:
             self._theme_combo.setCurrentIndex(theme_index)
@@ -181,7 +182,7 @@ class SettingsDialog(QDialog):
 
     def get_theme_setting(self) -> str:
         """現在のテーマ設定を取得"""
-        return get_setting("theme", "system")
+        return get_setting("theme", "dark")
 
     def get_ai_provider(self) -> str:
         """現在のAIプロバイダー設定を取得"""

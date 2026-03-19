@@ -6,6 +6,7 @@
 import sys
 from pathlib import Path
 
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 
@@ -28,6 +29,8 @@ class Application:
         # QApplication作成
         self.app = QApplication(sys.argv)
         self.app.setApplicationName(APP_NAME)
+        self.app.setStyle("Fusion")
+        self.app.setFont(QFont("Segoe UI", 9))
         self.app.setQuitOnLastWindowClosed(False)  # ウィンドウを閉じても終了しない
 
         # データベース初期化
@@ -76,7 +79,7 @@ class Application:
 
     def _apply_theme(self) -> None:
         """テーマを適用"""
-        theme_setting = get_setting("theme", "system")
+        theme_setting = get_setting("theme", "dark")
 
         if theme_setting == "system":
             dark = is_dark_mode()
@@ -134,6 +137,9 @@ class Application:
             APP_NAME,
             "クリップボード監視を開始しました",
         )
+
+        # メインウィンドウを起動時に表示
+        self._show_main_window()
 
         return self.app.exec()
 
