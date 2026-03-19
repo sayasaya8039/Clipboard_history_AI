@@ -5,7 +5,8 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from PyQt6.QtCore import QTimer, Qt, pyqtSignal
+from PyQt6.QtCore import QTimer, Qt, QRectF, pyqtSignal
+from PyQt6.QtGui import QPainterPath, QRegion
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -55,6 +56,7 @@ class MainWindow(QMainWindow):
             | Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
         )
+        self._corner_radius = 18
 
         self._has_centered_once = False
         self._search_query = ""
@@ -517,9 +519,14 @@ class MainWindow(QMainWindow):
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
         self._refresh_visible_content()
+        self._update_window_mask()
         if not self._has_centered_once:
             self._center_on_screen()
             self._has_centered_once = True
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._update_window_mask()
 
     def _center_on_screen(self) -> None:
         screen = self.screen()
@@ -529,6 +536,18 @@ class MainWindow(QMainWindow):
         x = geometry.x() + (geometry.width() - self.width()) // 2
         y = geometry.y() + (geometry.height() - self.height()) // 2
         self.move(max(geometry.x(), x), max(geometry.y(), y))
+
+    def _update_window_mask(self) -> None:
+        if self.width() <= 0 or self.height() <= 0:
+            return
+
+        if self.isMaximized() or self.isFullScreen():
+            self.clearMask()
+            return
+
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(self.rect()), self._corner_radius, self._corner_radius)
+        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
 
     def closeEvent(self, event) -> None:  # noqa: N802
         event.ignore()
