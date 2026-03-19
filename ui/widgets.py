@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 from PyQt6.QtCore import QPoint, Qt, pyqtSignal
 from PyQt6.QtCore import QTimer
-from PyQt6.QtGui import QFont, QFontMetrics, QTextLayout, QTextOption
+from PyQt6.QtGui import QFont, QFontMetrics, QPixmap, QTextLayout, QTextOption
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -19,6 +19,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from config import RESOURCES_DIR
 from ui.sample_data import format_relative_time, normalize_preview
 
 
@@ -126,6 +127,12 @@ class TitleBarWidget(QWidget):
         title_block = QHBoxLayout()
         title_block.setSpacing(8)
 
+        app_icon = QLabel()
+        app_icon.setObjectName("appIcon")
+        app_icon.setFixedSize(18, 18)
+        app_icon.setPixmap(self._load_app_icon_pixmap(18))
+        title_block.addWidget(app_icon)
+
         title = QLabel(self._title)
         title.setObjectName("titleLabel")
         title_block.addWidget(title)
@@ -144,6 +151,23 @@ class TitleBarWidget(QWidget):
         settings_button = _make_button("⚙", "設定", object_name="iconButton", fixed_size=(30, 30))
         settings_button.clicked.connect(self.settings_requested.emit)
         layout.addWidget(settings_button)
+
+    def _load_app_icon_pixmap(self, size: int) -> QPixmap:
+        for candidate in (RESOURCES_DIR / "icon.ico", RESOURCES_DIR / "icon.png"):
+            if not candidate.exists():
+                continue
+            pixmap = QPixmap(str(candidate))
+            if not pixmap.isNull():
+                return pixmap.scaled(
+                    size,
+                    size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+
+        fallback = QPixmap(size, size)
+        fallback.fill(Qt.GlobalColor.transparent)
+        return fallback
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
         if event.button() == Qt.MouseButton.LeftButton:
