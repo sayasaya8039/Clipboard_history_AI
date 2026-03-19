@@ -99,14 +99,20 @@ class MainWindow(QMainWindow):
         self._sidebar.setObjectName("sidebar")
         self._sidebar.setFixedWidth(280)
         sidebar_layout = QVBoxLayout(self._sidebar)
-        sidebar_layout.setContentsMargins(16, 16, 16, 0)
+        sidebar_layout.setContentsMargins(16, 16, 16, 16)
         sidebar_layout.setSpacing(12)
 
         self._tabs = SegmentedTabs()
         sidebar_layout.addWidget(self._tabs)
 
+        self._sidebar_content_panel = QFrame()
+        self._sidebar_content_panel.setObjectName("sidebarContentPanel")
+        content_layout = QVBoxLayout(self._sidebar_content_panel)
+        content_layout.setContentsMargins(12, 12, 12, 0)
+        content_layout.setSpacing(12)
+
         self._search = SearchField()
-        sidebar_layout.addWidget(self._search)
+        content_layout.addWidget(self._search)
 
         self._list_scroll = QScrollArea()
         self._list_scroll.setObjectName("listScroll")
@@ -120,7 +126,7 @@ class MainWindow(QMainWindow):
         self._list_layout.setSpacing(10)
         self._list_layout.addStretch(1)
         self._list_scroll.setWidget(self._list_host)
-        sidebar_layout.addWidget(self._list_scroll, 1)
+        content_layout.addWidget(self._list_scroll, 1)
 
         self._sidebar_footer = QFrame()
         self._sidebar_footer.setObjectName("sidebarFooter")
@@ -130,7 +136,9 @@ class MainWindow(QMainWindow):
         self._count_label.setObjectName("footerText")
         footer_layout.addWidget(self._count_label)
         footer_layout.addStretch(1)
-        sidebar_layout.addWidget(self._sidebar_footer)
+        content_layout.addWidget(self._sidebar_footer)
+
+        sidebar_layout.addWidget(self._sidebar_content_panel, 1)
 
         body.addWidget(self._sidebar)
 
@@ -526,7 +534,6 @@ class MainWindow(QMainWindow):
         super().showEvent(event)
         self._refresh_visible_content()
         self._update_window_mask()
-        self._update_sidebar_mask()
         if not self._has_centered_once:
             self._center_on_screen()
             self._has_centered_once = True
@@ -534,7 +541,6 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._update_window_mask()
-        self._update_sidebar_mask()
 
     def _center_on_screen(self) -> None:
         screen = self.screen()
@@ -556,21 +562,6 @@ class MainWindow(QMainWindow):
         path = QPainterPath()
         path.addRoundedRect(QRectF(self.rect()), self._corner_radius, self._corner_radius)
         self.setMask(QRegion(path.toFillPolygon().toPolygon()))
-
-    def _update_sidebar_mask(self) -> None:
-        if self._sidebar.width() <= 0 or self._sidebar.height() <= 0:
-            return
-
-        radius = 20
-        rect = QRectF(self._sidebar.rect())
-        path = QPainterPath()
-        path.addRoundedRect(rect, radius, radius)
-
-        # 左側の角だけは直角に保ち、右側だけを丸める。
-        left_strip = QPainterPath()
-        left_strip.addRect(QRectF(rect.left(), rect.top(), radius, rect.height()))
-        masked = path.united(left_strip)
-        self._sidebar.setMask(QRegion(masked.toFillPolygon().toPolygon()))
 
     def toggle_maximize(self) -> None:
         if self.isMaximized():
