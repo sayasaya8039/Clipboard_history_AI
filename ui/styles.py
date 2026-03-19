@@ -148,6 +148,8 @@ def get_stylesheet(dark: bool = False) -> str:
         QFrame#sidebar {{
             background-color: {t["surface"]};
             border-right: 1px solid {t["border"]};
+            border-top-right-radius: 20px;
+            border-bottom-right-radius: 20px;
         }}
 
         QFrame#sidebarFooter {{
