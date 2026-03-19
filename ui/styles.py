@@ -100,7 +100,7 @@ def get_stylesheet(dark: bool = False) -> str:
             font-size: 13px;
         }}
 
-        QFrame#titleBar {{
+        QWidget#titleBar {{
             background-color: {t["topbar"]};
             border-bottom: 1px solid {t["border"]};
         }}
@@ -429,7 +429,7 @@ def get_stylesheet(dark: bool = False) -> str:
             font-family: "Segoe Fluent Icons", "Segoe UI Symbol", "Segoe UI", "Yu Gothic UI", "Hiragino Sans", "Meiryo", sans-serif;
         }}
 
-        QFrame#tabSwitcher {{
+        QWidget#tabSwitcher {{
             background-color: {t["panel"]};
             border: 1px solid {t["border"]};
             border-radius: 20px;

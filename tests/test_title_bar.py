@@ -6,6 +6,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtWidgets import QApplication, QPushButton
 
 from ui.iconography import icon_font
+from ui.styles import get_stylesheet
 from ui.widgets import TitleBarWidget
 
 
@@ -38,6 +39,14 @@ class TitleBarTests(unittest.TestCase):
         )
 
         self.assertEqual(settings_button.font().family(), icon_font().family())
+
+    def test_stylesheet_targets_title_bar_and_tab_switcher_widgets(self) -> None:
+        stylesheet = get_stylesheet(True)
+
+        self.assertIn("QWidget#titleBar {", stylesheet)
+        self.assertIn("QWidget#tabSwitcher {", stylesheet)
+        self.assertNotIn("QFrame#titleBar {", stylesheet)
+        self.assertNotIn("QFrame#tabSwitcher {", stylesheet)
 
 
 if __name__ == "__main__":
