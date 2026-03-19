@@ -372,8 +372,10 @@ class BaseCard(QFrame):
     def __init__(self, item_id: str, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.item_id = item_id
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setProperty("selected", False)
+        self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
 
     def set_selected(self, selected: bool) -> None:
         self.setProperty("selected", selected)

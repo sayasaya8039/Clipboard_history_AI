@@ -5,7 +5,7 @@ from datetime import datetime
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtWidgets import QApplication, QFrame
+from PyQt6.QtWidgets import QApplication, QFrame, QSizePolicy
 
 from ui.main_window import MainWindow
 from ui.styles import get_stylesheet
@@ -68,6 +68,7 @@ class SidebarPanelTests(unittest.TestCase):
 
         card = window.findChild(HistoryCard, "historyCard")
         self.assertIsNotNone(card)
+        self.assertEqual(card.sizePolicy().horizontalPolicy(), QSizePolicy.Policy.Ignored)
         self.assertGreater(window._list_layout.contentsMargins().right(), 0)
         self.assertLess(card.width(), window._list_scroll.viewport().width())
 
