@@ -67,13 +67,13 @@ class StartupManagerTests(unittest.TestCase):
 
     def test_build_launch_command_uses_frozen_executable(self) -> None:
         command = build_launch_at_startup_command(
-            executable=r"D:\NEXTCLOUD\Windows_app\Coppy\dist\ClipboardHistory.exe",
+            executable=r"D:\NEXTCLOUD\Windows_app\Coppy\dist\coppy.exe",
             frozen=True,
         )
 
         self.assertEqual(
             command,
-            '"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\ClipboardHistory.exe" --startup',
+            '"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\coppy.exe" --startup',
         )
 
     def test_is_startup_launch_detects_flag(self) -> None:
@@ -85,7 +85,7 @@ class StartupManagerTests(unittest.TestCase):
 
         set_launch_at_startup_enabled(
             True,
-            command='"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\ClipboardHistory.exe" --startup',
+            command='"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\coppy.exe" --startup',
             winreg_module=fake_reg,
         )
 
@@ -93,7 +93,7 @@ class StartupManagerTests(unittest.TestCase):
         self.assertEqual(len(fake_reg.set_calls), 1)
         self.assertEqual(
             fake_reg.set_calls[0][3],
-            '"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\ClipboardHistory.exe" --startup',
+            '"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\coppy.exe" --startup',
         )
 
     def test_set_launch_at_startup_ignores_missing_registry_value_on_delete(self) -> None:
@@ -106,12 +106,12 @@ class StartupManagerTests(unittest.TestCase):
 
     def test_is_launch_at_startup_enabled_matches_registry_value(self) -> None:
         fake_reg = _FakeWinReg(
-            query_value='"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\ClipboardHistory.exe" --startup'
+            query_value='"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\coppy.exe" --startup'
         )
 
         self.assertTrue(
             is_launch_at_startup_enabled(
-                command='"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\ClipboardHistory.exe" --startup',
+                command='"D:\\NEXTCLOUD\\Windows_app\\Coppy\\dist\\coppy.exe" --startup',
                 winreg_module=fake_reg,
             )
         )

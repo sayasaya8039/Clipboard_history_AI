@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # アプリケーション情報
-APP_NAME = 'ClipboardHistory'
+APP_NAME = 'coppy'
 APP_VERSION = '1.0.1'
 
 # パス設定
