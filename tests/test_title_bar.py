@@ -3,11 +3,12 @@ import unittest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QApplication, QPushButton
 
 from ui.iconography import icon_font
 from ui.styles import get_stylesheet
-from ui.widgets import TitleBarWidget
+from ui.widgets import SegmentedTabs, TitleBarWidget
 
 
 class TitleBarTests(unittest.TestCase):
@@ -47,6 +48,15 @@ class TitleBarTests(unittest.TestCase):
         self.assertIn("QWidget#tabSwitcher {", stylesheet)
         self.assertNotIn("QFrame#titleBar {", stylesheet)
         self.assertNotIn("QFrame#tabSwitcher {", stylesheet)
+
+    def test_title_bar_and_tab_switcher_paint_styled_backgrounds(self) -> None:
+        title_bar = TitleBarWidget("Coppy", "v1.0.0")
+        tab_switcher = SegmentedTabs()
+        self.addCleanup(title_bar.deleteLater)
+        self.addCleanup(tab_switcher.deleteLater)
+
+        self.assertTrue(title_bar.testAttribute(Qt.WidgetAttribute.WA_StyledBackground))
+        self.assertTrue(tab_switcher.testAttribute(Qt.WidgetAttribute.WA_StyledBackground))
 
 
 if __name__ == "__main__":

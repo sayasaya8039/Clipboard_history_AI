@@ -94,6 +94,7 @@ class TitleBarWidget(QWidget):
     def _build_ui(self) -> None:
         self.setObjectName("titleBar")
         self.setFixedHeight(52)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(16, 0, 16, 0)
@@ -212,6 +213,7 @@ class SegmentedTabs(QWidget):
 
     def _build_ui(self) -> None:
         self.setObjectName("tabSwitcher")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
