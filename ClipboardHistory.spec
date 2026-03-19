@@ -8,7 +8,7 @@ from pathlib import Path
 
 # アプリケーション情報
 APP_NAME = 'coppy'
-APP_VERSION = '1.1.0'
+APP_VERSION = '1.1.1'
 
 # パス設定
 base_path = Path(SPECPATH)

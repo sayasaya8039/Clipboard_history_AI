@@ -68,6 +68,7 @@ _DEFAULTS: dict[str, str] = {
     "show_timestamps": "1",
     "show_app_names": "1",
     "show_type_icons": "1",
+    "clear_snippets_before_import": "0",
 }
 
 
@@ -523,6 +524,14 @@ class SettingsDialog(QDialog):
         self._snippet_import_path_input = self._create_line_edit("snippetImportPathInput", "snippets.csv")
         self._snippet_import_path_input.setReadOnly(True)
         self._snippet_import_encoding_combo = self._create_encoding_combo("snippetImportEncodingCombo")
+        self._clear_snippets_before_import_toggle = self._create_toggle("clearSnippetsBeforeImportToggle")
+        layout.addWidget(
+            self._create_toggle_row(
+                "定型文をすべてクリア後に取り込む",
+                "オンのときは既存の定型文をすべて削除してから CSV を取り込みます。",
+                self._clear_snippets_before_import_toggle,
+            )
+        )
         layout.addWidget(
             self._create_transfer_block(
                 "CSV取込",
@@ -733,7 +742,7 @@ class SettingsDialog(QDialog):
         self._restore_history_toggle.setChecked(
             _is_truthy(get_setting("restore_history_on_launch", _DEFAULTS["restore_history_on_launch"]))
         )
-        self._database_path_input.setText(get_setting("database_path", _DEFAULTS["database_path"]) or "")
+        self._database_path_input.setText(_DEFAULTS["database_path"])
 
         self._save_text_toggle.setChecked(_is_truthy(get_setting("save_text", _DEFAULTS["save_text"])))
         self._save_html_toggle.setChecked(_is_truthy(get_setting("save_html", _DEFAULTS["save_html"])))
@@ -770,6 +779,9 @@ class SettingsDialog(QDialog):
         self._show_type_icons_toggle.setChecked(
             _is_truthy(get_setting("show_type_icons", _DEFAULTS["show_type_icons"]))
         )
+        self._clear_snippets_before_import_toggle.setChecked(
+            _is_truthy(get_setting("clear_snippets_before_import", _DEFAULTS["clear_snippets_before_import"]))
+        )
 
     def _save_settings(self) -> None:
         try:
@@ -799,7 +811,7 @@ class SettingsDialog(QDialog):
         )
         self._save_bool("save_history_on_exit", self._save_history_toggle)
         self._save_bool("restore_history_on_launch", self._restore_history_toggle)
-        set_setting("database_path", self._database_path_input.text().strip() or _DEFAULTS["database_path"])
+        set_setting("database_path", _DEFAULTS["database_path"])
 
         self._save_bool("save_text", self._save_text_toggle)
         self._save_bool("save_html", self._save_html_toggle)
@@ -820,6 +832,7 @@ class SettingsDialog(QDialog):
         self._save_bool("show_timestamps", self._show_timestamps_toggle)
         self._save_bool("show_app_names", self._show_app_names_toggle)
         self._save_bool("show_type_icons", self._show_type_icons_toggle)
+        self._save_bool("clear_snippets_before_import", self._clear_snippets_before_import_toggle)
 
         self.settings_changed.emit()
         self.accept()
@@ -840,6 +853,10 @@ class SettingsDialog(QDialog):
 
     def get_theme_setting(self) -> str:
         return get_setting("theme", _DEFAULTS["theme"]) or _DEFAULTS["theme"]
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        self._load_settings()
+        super().showEvent(event)
 
     def _browse_save_path(self, target: QLineEdit, title: str, default_name: str) -> None:
         selected, _ = QFileDialog.getSaveFileName(
@@ -907,12 +924,25 @@ class SettingsDialog(QDialog):
         )
 
     def _import_snippets_csv(self) -> None:
+        clear_existing = self._clear_snippets_before_import_toggle.isChecked()
+        if clear_existing:
+            confirmed = QMessageBox.question(
+                self,
+                "定型文をクリアして取り込む",
+                "既存の定型文をすべて削除してから取り込みます。続行しますか？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if confirmed != QMessageBox.StandardButton.Yes:
+                return
+
         self._run_import(
             self._snippet_import_path_input,
             "定型文 CSV を選択",
             self._snippet_import_encoding_combo.currentData(),
             import_snippets_csv,
             "定型文データ",
+            clear_existing=clear_existing,
         )
 
     def _run_export(
@@ -947,22 +977,28 @@ class SettingsDialog(QDialog):
         encoding: str,
         import_handler,
         subject: str,
+        clear_existing: bool = False,
     ) -> None:
         path = self._resolve_input_path(target, title)
         if path is None:
             return
         try:
-            result = import_handler(path, encoding=encoding)
+            if clear_existing:
+                result = import_handler(path, encoding=encoding, clear_existing=True)
+            else:
+                result = import_handler(path, encoding=encoding)
         except (OSError, UnicodeError, ValueError) as exc:
             QMessageBox.warning(self, "CSV 取込に失敗しました", str(exc))
             return
 
         target.setText(str(path))
+        cleared_line = f"クリア: {result.cleared_count} 件\n" if getattr(result, "cleared_count", 0) else ""
         QMessageBox.information(
             self,
             "CSV 取込",
             (
                 f"{subject}の取込が完了しました。\n"
+                f"{cleared_line}"
                 f"追加: {result.added_count} 件\n"
                 f"更新: {result.updated_count} 件\n"
                 f"スキップ: {result.skipped_count} 件"

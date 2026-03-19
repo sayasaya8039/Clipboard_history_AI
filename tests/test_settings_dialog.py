@@ -92,6 +92,7 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertIsNotNone(dialog.findChild(QLineEdit, "historyImportPathInput"))
         self.assertIsNotNone(dialog.findChild(QLineEdit, "snippetExportPathInput"))
         self.assertIsNotNone(dialog.findChild(QLineEdit, "snippetImportPathInput"))
+        self.assertIsNotNone(dialog.findChild(QCheckBox, "clearSnippetsBeforeImportToggle"))
 
     def test_export_history_action_uses_selected_path_and_encoding(self) -> None:
         dialog = SettingsDialog()
@@ -141,6 +142,36 @@ class SettingsDialogTests(unittest.TestCase):
         import_csv.assert_called_once_with(import_path, encoding="shift_jis")
         information.assert_called_once()
         self.assertEqual(changed_calls, [True])
+
+    def test_import_snippets_action_passes_clear_existing_and_confirms(self) -> None:
+        dialog = SettingsDialog()
+        self.addCleanup(dialog.deleteLater)
+
+        import_path = Path(self._tempdir.name) / "snippets.csv"
+        import_path.write_text(
+            "\n".join(
+                [
+                    "name,content,description,tags,favorite,created_at",
+                    "署名,よろしくお願いします。,メール用,\"mail,jp\",1,2026-03-20 10:00:00",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        dialog.findChild(QLineEdit, "snippetImportPathInput").setText(str(import_path))
+        self._set_check(dialog, "clearSnippetsBeforeImportToggle", True)
+
+        with (
+            patch("ui.settings_dialog.import_snippets_csv") as import_csv,
+            patch("ui.settings_dialog.QMessageBox.question", return_value=16384) as question,
+            patch("ui.settings_dialog.QMessageBox.information"),
+        ):
+            import_csv.return_value.added_count = 1
+            import_csv.return_value.updated_count = 0
+            import_csv.return_value.skipped_count = 0
+            dialog._import_snippets_csv()
+
+        question.assert_called_once()
+        import_csv.assert_called_once_with(import_path, encoding="shift_jis", clear_existing=True)
 
     def test_dialog_keeps_figma_sized_frame_without_ai_section(self) -> None:
         dialog = SettingsDialog()
@@ -215,6 +246,19 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual(get_setting("show_timestamps"), "0")
         self.assertEqual(get_setting("show_app_names"), "0")
         self.assertEqual(get_setting("show_type_icons"), "1")
+
+    def test_save_settings_persists_transfer_options_and_reload_restores_them(self) -> None:
+        dialog = SettingsDialog()
+        self.addCleanup(dialog.deleteLater)
+
+        self._set_check(dialog, "clearSnippetsBeforeImportToggle", True)
+        dialog._save_settings()
+
+        reloaded = SettingsDialog()
+        self.addCleanup(reloaded.deleteLater)
+
+        self.assertEqual(get_setting("clear_snippets_before_import"), "1")
+        self.assertTrue(reloaded.findChild(QCheckBox, "clearSnippetsBeforeImportToggle").isChecked())
 
     def test_save_settings_normalizes_invalid_numeric_values(self) -> None:
         dialog = SettingsDialog()

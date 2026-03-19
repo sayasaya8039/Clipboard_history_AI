@@ -8,6 +8,7 @@ from pathlib import Path
 
 from database import (
     add_history,
+    clear_all_snippets,
     create_snippet,
     find_snippet_by_name_and_content,
     get_all_history,
@@ -40,6 +41,7 @@ class ImportResult:
     added_count: int = 0
     updated_count: int = 0
     skipped_count: int = 0
+    cleared_count: int = 0
 
 
 def export_history_csv(path: str | Path, encoding: str = "utf-8") -> int:
@@ -133,12 +135,17 @@ def export_snippets_csv(path: str | Path, encoding: str = "utf-8") -> int:
     return len(rows)
 
 
-def import_snippets_csv(path: str | Path, encoding: str = "utf-8") -> ImportResult:
+def import_snippets_csv(
+    path: str | Path,
+    encoding: str = "utf-8",
+    clear_existing: bool = False,
+) -> ImportResult:
     """定型文 CSV を取り込む。"""
     source = Path(path)
     added_count = 0
     updated_count = 0
     skipped_count = 0
+    cleared_count = clear_all_snippets() if clear_existing else 0
     with source.open("r", encoding=encoding, newline="") as handle:
         reader = csv.DictReader(handle)
         _validate_headers(reader.fieldnames, _SNIPPET_HEADERS)
@@ -179,6 +186,7 @@ def import_snippets_csv(path: str | Path, encoding: str = "utf-8") -> ImportResu
         added_count=added_count,
         updated_count=updated_count,
         skipped_count=skipped_count,
+        cleared_count=cleared_count,
     )
 
 

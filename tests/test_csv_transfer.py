@@ -130,3 +130,34 @@ class CsvTransferTests(unittest.TestCase):
         self.assertEqual(result.added_count, 1)
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["content"], "日本語の履歴")
+
+    def test_import_snippets_can_clear_existing_items_first(self) -> None:
+        from csv_transfer import import_snippets_csv
+        from database import create_snippet, list_snippets
+
+        create_snippet(
+            name="既存",
+            content="old",
+            description="before import",
+            tags=["old"],
+            favorite=False,
+            created_at="2026-03-20 09:00:00",
+        )
+
+        import_path = Path(self._tempdir.name) / "snippets-clear.csv"
+        import_path.write_text(
+            "\n".join(
+                [
+                    "name,content,description,tags,favorite,created_at",
+                    "署名,よろしくお願いします。,メール用,\"mail,jp\",1,2026-03-20 10:00:00",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        result = import_snippets_csv(import_path, encoding="utf-8", clear_existing=True)
+
+        snippets = list_snippets()
+        self.assertEqual(result.added_count, 1)
+        self.assertEqual(len(snippets), 1)
+        self.assertEqual(snippets[0]["name"], "署名")

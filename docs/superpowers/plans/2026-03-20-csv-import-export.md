@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 設定画面に既存 UI と整合する `出力/取込` タブを追加し、履歴データと定型文データを CSV で出力・取込できるようにする。
+**Goal:** 設定画面に既存 UI と整合する `出力/取込` タブを追加し、履歴データと定型文データを CSV で出力・取込できるようにし、設定保存先を `%APPDATA%\\Coppy` に安定化する。
 
-**Architecture:** `database.py` に定型文永続化 API を追加し、CSV 入出力は新規サービスモジュールへ分離する。設定ダイアログはそのサービスを呼び出す薄い UI 層に留め、`MainWindow` は定型文を DB から読む構成へ移す。
+**Architecture:** `config.py` で永続保存先を `%APPDATA%\\Coppy` に切り替え、旧 `data/`, `images/` から初回移行する。`database.py` に定型文永続化 API と全削除 API を追加し、CSV 入出力は `csv_transfer.py` に分離する。設定ダイアログは `clear_existing` を制御する UI と確認ダイアログだけを持つ薄い層に留める。
 
 **Tech Stack:** Python 3.10+, PyQt6, sqlite3, csv, unittest
 

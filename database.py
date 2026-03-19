@@ -430,6 +430,17 @@ def delete_snippet(snippet_id: int) -> bool:
     return affected > 0
 
 
+def clear_all_snippets() -> int:
+    """定型文をすべて削除"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM snippets")
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return affected
+
+
 def toggle_snippet_favorite(snippet_id: int) -> bool:
     """定型文のお気に入り状態をトグル"""
     conn = get_connection()
