@@ -1,10 +1,5 @@
 """設定管理モジュール"""
-import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-# .envファイルを読み込み
-load_dotenv()
 
 # アプリケーションディレクトリ
 APP_DIR = Path(__file__).parent
@@ -20,14 +15,9 @@ RESOURCES_DIR.mkdir(exist_ok=True)
 # データベースパス
 DATABASE_PATH = DATA_DIR / "clipboard_history.db"
 
-# AI設定
-AI_PROVIDER = os.getenv("AI_PROVIDER", "none")  # none, openai, gemini
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-
 # アプリケーション設定
 APP_NAME = "クリップボード履歴"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 # カテゴリ定義
 CATEGORIES = {

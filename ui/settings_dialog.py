@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -22,15 +21,11 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from ai_client import test_api_connection
 from config import DATABASE_PATH
 from database import get_setting, set_setting
 
 
 _DEFAULTS: dict[str, str] = {
-    "ai_provider": "none",
-    "openai_api_key": "",
-    "gemini_api_key": "",
     "theme": "dark",
     "launch_at_startup": "1",
     "show_in_menubar": "1",
@@ -94,7 +89,12 @@ class SwitchToggle(QCheckBox):
         painter.drawRoundedRect(track_rect, 11, 11)
 
         thumb_x = track_rect.right() - 18 if self.isChecked() else track_rect.left() + 2
-        thumb_rect = track_rect.adjusted(thumb_x - track_rect.left(), 2, -(track_rect.width() - (thumb_x - track_rect.left()) - 16), -2)
+        thumb_rect = track_rect.adjusted(
+            thumb_x - track_rect.left(),
+            2,
+            -(track_rect.width() - (thumb_x - track_rect.left()) - 16),
+            -2,
+        )
         painter.setBrush(QColor("#ffffff"))
         painter.drawEllipse(thumb_rect)
 
@@ -155,50 +155,32 @@ class SettingsDialog(QDialog):
     def _build_general_tab(self) -> None:
         page, layout = self._create_tab_page("一般")
 
-        ai_section = self._create_section("AI カテゴリ分類")
-        ai_layout = ai_section.layout()
-        self._provider_combo = self._create_combo(
-            "aiProviderCombo",
-            [
-                ("無効（ルールベースのみ）", "none"),
-                ("OpenAI (GPT)", "openai"),
-                ("Google Gemini", "gemini"),
-            ],
-        )
-        self._provider_combo.currentIndexChanged.connect(self._on_provider_changed)
-        ai_layout.addWidget(self._create_field_block("AI プロバイダー", "既存の分類機能と接続テストを維持します。", self._provider_combo))
-
-        self._openai_section = self._create_api_section(
-            "openaiSettingsSection",
-            "OpenAI 設定",
-            "openaiKeyInput",
-            "sk-...",
-            "接続テスト",
-            lambda: self._test_connection("openai"),
-        )
-        ai_layout.addWidget(self._openai_section)
-
-        self._gemini_section = self._create_api_section(
-            "geminiSettingsSection",
-            "Google Gemini 設定",
-            "geminiKeyInput",
-            "AIza...",
-            "接続テスト",
-            lambda: self._test_connection("gemini"),
-        )
-        ai_layout.addWidget(self._gemini_section)
-        layout.addWidget(ai_section)
-
-        layout.addWidget(self._create_separator())
-
         self._launch_toggle = self._create_toggle("launchAtStartupToggle")
-        layout.addWidget(self._create_toggle_row("システム起動時に開始", "Windows 起動時に自動的に Coppy を開始します。", self._launch_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "システム起動時に開始",
+                "Windows 起動時に自動的に Coppy を開始します。",
+                self._launch_toggle,
+            )
+        )
 
         self._menubar_toggle = self._create_toggle("showInMenuBarToggle")
-        layout.addWidget(self._create_toggle_row("通知領域に表示", "タスクトレイにアプリケーションアイコンを表示します。", self._menubar_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "通知領域に表示",
+                "タスクトレイにアプリケーションアイコンを表示します。",
+                self._menubar_toggle,
+            )
+        )
 
         self._dock_toggle = self._create_toggle("showInDockToggle")
-        layout.addWidget(self._create_toggle_row("Dock に表示", "macOS 風表現の項目として残し、Windows では表示設定として扱います。", self._dock_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "Dock に表示",
+                "macOS 風表現の項目として残し、Windows では表示設定として扱います。",
+                self._dock_toggle,
+            )
+        )
 
         layout.addWidget(self._create_separator())
 
@@ -212,15 +194,29 @@ class SettingsDialog(QDialog):
             "notificationLevelCombo",
             [("すべて表示", "all"), ("エラーのみ", "errors"), ("表示しない", "none")],
         )
-        layout.addWidget(self._create_field_block("通知", "通知バナーの表示レベル。", self._notification_combo))
+        layout.addWidget(
+            self._create_field_block("通知", "通知バナーの表示レベル。", self._notification_combo)
+        )
 
         layout.addWidget(self._create_separator())
 
         self._monitor_toggle = self._create_toggle("monitorClipboardToggle")
-        layout.addWidget(self._create_toggle_row("クリップボードを監視", "クリップボード変更を自動で検出します。", self._monitor_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "クリップボードを監視",
+                "クリップボード変更を自動で検出します。",
+                self._monitor_toggle,
+            )
+        )
 
         self._confirm_delete_toggle = self._create_toggle("confirmBeforeDeleteToggle")
-        layout.addWidget(self._create_toggle_row("確認ダイアログを表示", "アイテム削除時に確認ダイアログを出します。", self._confirm_delete_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "確認ダイアログを表示",
+                "アイテム削除時に確認ダイアログを出します。",
+                self._confirm_delete_toggle,
+            )
+        )
 
         layout.addStretch(1)
         self._tabs.addTab(page, "一般")
@@ -229,24 +225,54 @@ class SettingsDialog(QDialog):
         page, layout = self._create_tab_page("履歴")
 
         self._max_history_input = self._create_number_edit("maxHistoryItemsInput", "200")
-        layout.addWidget(self._create_field_block("最大保存アイテム数", "履歴に保持する件数。0 で無制限。", self._max_history_input))
+        layout.addWidget(
+            self._create_field_block(
+                "最大保存アイテム数",
+                "履歴に保持する件数。0 で無制限。",
+                self._max_history_input,
+            )
+        )
 
         self._retention_days_input = self._create_number_edit("retentionDaysInput", "0")
-        layout.addWidget(self._create_field_block("保存期間（日）", "指定日数を超えたアイテムを自動削除。0 で無期限。", self._retention_days_input))
+        layout.addWidget(
+            self._create_field_block(
+                "保存期間（日）",
+                "指定日数を超えたアイテムを自動削除。0 で無期限。",
+                self._retention_days_input,
+            )
+        )
 
         layout.addWidget(self._create_separator())
 
         self._save_history_toggle = self._create_toggle("saveHistoryOnExitToggle")
-        layout.addWidget(self._create_toggle_row("終了時に履歴を保存", "アプリ終了時に履歴をディスクへ保存します。", self._save_history_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "終了時に履歴を保存",
+                "アプリ終了時に履歴をディスクへ保存します。",
+                self._save_history_toggle,
+            )
+        )
 
         self._restore_history_toggle = self._create_toggle("restoreHistoryOnLaunchToggle")
-        layout.addWidget(self._create_toggle_row("起動時に履歴を復元", "前回の履歴を起動時に復元します。", self._restore_history_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "起動時に履歴を復元",
+                "前回の履歴を起動時に復元します。",
+                self._restore_history_toggle,
+            )
+        )
 
         layout.addWidget(self._create_separator())
 
         self._database_path_input = self._create_line_edit("databasePathInput", str(DATABASE_PATH))
         self._database_path_input.setReadOnly(True)
-        layout.addWidget(self._create_field_block("データベースパス", "クリップボード履歴の保存場所。", self._database_path_input))
+        layout.addWidget(
+            self._create_field_block(
+                "データベースパス",
+                "クリップボード履歴の保存場所。",
+                self._database_path_input,
+            )
+        )
 
         layout.addStretch(1)
         self._tabs.addTab(page, "履歴")
@@ -269,18 +295,42 @@ class SettingsDialog(QDialog):
         layout.addWidget(self._create_separator())
 
         self._max_image_size_input = self._create_number_edit("maxImageSizeInput", "10")
-        layout.addWidget(self._create_field_block("最大画像サイズ（MB）", "保存する画像の最大サイズ。0 で無制限。", self._max_image_size_input))
+        layout.addWidget(
+            self._create_field_block(
+                "最大画像サイズ（MB）",
+                "保存する画像の最大サイズ。0 で無制限。",
+                self._max_image_size_input,
+            )
+        )
 
         layout.addWidget(self._create_separator())
 
         self._exclude_duplicates_toggle = self._create_toggle("excludeDuplicatesToggle")
-        layout.addWidget(self._create_toggle_row("重複を除外", "同じ内容のアイテムは 1 件だけ保持します。", self._exclude_duplicates_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "重複を除外",
+                "同じ内容のアイテムは 1 件だけ保持します。",
+                self._exclude_duplicates_toggle,
+            )
+        )
 
         self._exclude_empty_toggle = self._create_toggle("excludeEmptyToggle")
-        layout.addWidget(self._create_toggle_row("空のアイテムを除外", "空白のみのアイテムを保存しません。", self._exclude_empty_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "空のアイテムを除外",
+                "空白のみのアイテムを保存しません。",
+                self._exclude_empty_toggle,
+            )
+        )
 
         self._exclude_passwords_toggle = self._create_toggle("excludePasswordsToggle")
-        layout.addWidget(self._create_toggle_row("パスワードを除外", "パスワードマネージャー由来のコピーを無視します。", self._exclude_passwords_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "パスワードを除外",
+                "パスワードマネージャー由来のコピーを無視します。",
+                self._exclude_passwords_toggle,
+            )
+        )
 
         layout.addStretch(1)
         self._tabs.addTab(page, "アイテム")
@@ -328,13 +378,25 @@ class SettingsDialog(QDialog):
             "fontFamilyCombo",
             [("システムフォント", "system"), ("Segoe UI", "segoe-ui"), ("Consolas", "consolas")],
         )
-        layout.addWidget(self._create_field_block("フォント", "設定画面とリスト表示の基準フォント。", self._font_family_combo))
+        layout.addWidget(
+            self._create_field_block(
+                "フォント",
+                "設定画面とリスト表示の基準フォント。",
+                self._font_family_combo,
+            )
+        )
 
         self._font_size_combo = self._create_combo(
             "fontSizeCombo",
             [("小（11px）", "11"), ("中（13px）", "13"), ("大（15px）", "15")],
         )
-        layout.addWidget(self._create_field_block("フォントサイズ", "UI に適用する基本フォントサイズ。", self._font_size_combo))
+        layout.addWidget(
+            self._create_field_block(
+                "フォントサイズ",
+                "UI に適用する基本フォントサイズ。",
+                self._font_size_combo,
+            )
+        )
 
         layout.addWidget(self._create_separator())
 
@@ -342,21 +404,51 @@ class SettingsDialog(QDialog):
             "previewLineCountCombo",
             [("1 行", "1"), ("2 行", "2"), ("3 行", "3"), ("4 行", "4")],
         )
-        layout.addWidget(self._create_field_block("リストの行数", "各アイテムのプレビュー表示行数。", self._preview_line_combo))
+        layout.addWidget(
+            self._create_field_block(
+                "リストの行数",
+                "各アイテムのプレビュー表示行数。",
+                self._preview_line_combo,
+            )
+        )
 
         layout.addWidget(self._create_separator())
 
         self._show_item_numbers_toggle = self._create_toggle("showItemNumbersToggle")
-        layout.addWidget(self._create_toggle_row("アイテム番号を表示", "リストにアイテム番号を表示します。", self._show_item_numbers_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "アイテム番号を表示",
+                "リストにアイテム番号を表示します。",
+                self._show_item_numbers_toggle,
+            )
+        )
 
         self._show_timestamps_toggle = self._create_toggle("showTimestampsToggle")
-        layout.addWidget(self._create_toggle_row("タイムスタンプを表示", "各アイテムのコピー日時を表示します。", self._show_timestamps_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "タイムスタンプを表示",
+                "各アイテムのコピー日時を表示します。",
+                self._show_timestamps_toggle,
+            )
+        )
 
         self._show_app_names_toggle = self._create_toggle("showAppNamesToggle")
-        layout.addWidget(self._create_toggle_row("アプリ名を表示", "コピー元アプリケーション名を表示します。", self._show_app_names_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "アプリ名を表示",
+                "コピー元アプリケーション名を表示します。",
+                self._show_app_names_toggle,
+            )
+        )
 
         self._show_type_icons_toggle = self._create_toggle("showTypeIconsToggle")
-        layout.addWidget(self._create_toggle_row("アイコンを表示", "アイテム種別アイコンを表示します。", self._show_type_icons_toggle))
+        layout.addWidget(
+            self._create_toggle_row(
+                "アイコンを表示",
+                "アイテム種別アイコンを表示します。",
+                self._show_type_icons_toggle,
+            )
+        )
 
         layout.addStretch(1)
         self._tabs.addTab(page, "外観")
@@ -380,18 +472,6 @@ class SettingsDialog(QDialog):
         scroll.setWidget(container)
         page_layout.addWidget(scroll)
         return page, layout
-
-    def _create_section(self, title: str) -> QFrame:
-        section = QFrame()
-        section.setObjectName("settingsSection")
-        layout = QVBoxLayout(section)
-        layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(10)
-
-        heading = QLabel(title)
-        heading.setObjectName("settingsSectionHeading")
-        layout.addWidget(heading)
-        return section
 
     def _create_separator(self) -> QFrame:
         separator = QFrame()
@@ -468,29 +548,6 @@ class SettingsDialog(QDialog):
         layout.addWidget(toggle, 0, Qt.AlignmentFlag.AlignTop)
         return row
 
-    def _create_api_section(
-        self,
-        object_name: str,
-        title: str,
-        input_name: str,
-        placeholder: str,
-        button_text: str,
-        callback,
-    ) -> QFrame:
-        section = self._create_section(title)
-        section.setObjectName(object_name)
-        layout = section.layout()
-
-        api_input = self._create_line_edit(input_name, placeholder)
-        api_input.setEchoMode(QLineEdit.EchoMode.Password)
-        layout.addWidget(self._create_field_block("API キー", "", api_input))
-
-        test_button = QPushButton(button_text)
-        test_button.setObjectName("settingsSecondaryButton")
-        test_button.clicked.connect(callback)
-        layout.addWidget(test_button, 0, Qt.AlignmentFlag.AlignLeft)
-        return section
-
     def _create_shortcut_row(self, title: str, description: str, shortcut: str) -> QFrame:
         row = QFrame()
         row.setObjectName("settingsShortcutRow")
@@ -520,23 +577,29 @@ class SettingsDialog(QDialog):
         return row
 
     def _load_settings(self) -> None:
-        self._set_combo_value(self._provider_combo, get_setting("ai_provider", _DEFAULTS["ai_provider"]))
-        self.findChild(QLineEdit, "openaiKeyInput").setText(get_setting("openai_api_key", _DEFAULTS["openai_api_key"]) or "")
-        self.findChild(QLineEdit, "geminiKeyInput").setText(get_setting("gemini_api_key", _DEFAULTS["gemini_api_key"]) or "")
         self._set_combo_value(self._theme_combo, get_setting("theme", _DEFAULTS["theme"]))
 
         self._launch_toggle.setChecked(_is_truthy(get_setting("launch_at_startup", _DEFAULTS["launch_at_startup"])))
         self._menubar_toggle.setChecked(_is_truthy(get_setting("show_in_menubar", _DEFAULTS["show_in_menubar"])))
         self._dock_toggle.setChecked(_is_truthy(get_setting("show_in_dock", _DEFAULTS["show_in_dock"])))
         self._set_combo_value(self._language_combo, get_setting("language", _DEFAULTS["language"]))
-        self._set_combo_value(self._notification_combo, get_setting("notification_level", _DEFAULTS["notification_level"]))
+        self._set_combo_value(
+            self._notification_combo,
+            get_setting("notification_level", _DEFAULTS["notification_level"]),
+        )
         self._monitor_toggle.setChecked(_is_truthy(get_setting("monitor_clipboard", _DEFAULTS["monitor_clipboard"])))
-        self._confirm_delete_toggle.setChecked(_is_truthy(get_setting("confirm_before_delete", _DEFAULTS["confirm_before_delete"])))
+        self._confirm_delete_toggle.setChecked(
+            _is_truthy(get_setting("confirm_before_delete", _DEFAULTS["confirm_before_delete"]))
+        )
 
         self._max_history_input.setText(get_setting("max_history_items", _DEFAULTS["max_history_items"]) or "")
         self._retention_days_input.setText(get_setting("retention_days", _DEFAULTS["retention_days"]) or "")
-        self._save_history_toggle.setChecked(_is_truthy(get_setting("save_history_on_exit", _DEFAULTS["save_history_on_exit"])))
-        self._restore_history_toggle.setChecked(_is_truthy(get_setting("restore_history_on_launch", _DEFAULTS["restore_history_on_launch"])))
+        self._save_history_toggle.setChecked(
+            _is_truthy(get_setting("save_history_on_exit", _DEFAULTS["save_history_on_exit"]))
+        )
+        self._restore_history_toggle.setChecked(
+            _is_truthy(get_setting("restore_history_on_launch", _DEFAULTS["restore_history_on_launch"]))
+        )
         self._database_path_input.setText(get_setting("database_path", _DEFAULTS["database_path"]) or "")
 
         self._save_text_toggle.setChecked(_is_truthy(get_setting("save_text", _DEFAULTS["save_text"])))
@@ -544,24 +607,38 @@ class SettingsDialog(QDialog):
         self._save_images_toggle.setChecked(_is_truthy(get_setting("save_images", _DEFAULTS["save_images"])))
         self._save_files_toggle.setChecked(_is_truthy(get_setting("save_files", _DEFAULTS["save_files"])))
         self._max_image_size_input.setText(get_setting("max_image_size_mb", _DEFAULTS["max_image_size_mb"]) or "")
-        self._exclude_duplicates_toggle.setChecked(_is_truthy(get_setting("exclude_duplicates", _DEFAULTS["exclude_duplicates"])))
-        self._exclude_empty_toggle.setChecked(_is_truthy(get_setting("exclude_empty_items", _DEFAULTS["exclude_empty_items"])))
-        self._exclude_passwords_toggle.setChecked(_is_truthy(get_setting("exclude_password_manager", _DEFAULTS["exclude_password_manager"])))
+        self._exclude_duplicates_toggle.setChecked(
+            _is_truthy(get_setting("exclude_duplicates", _DEFAULTS["exclude_duplicates"]))
+        )
+        self._exclude_empty_toggle.setChecked(
+            _is_truthy(get_setting("exclude_empty_items", _DEFAULTS["exclude_empty_items"]))
+        )
+        self._exclude_passwords_toggle.setChecked(
+            _is_truthy(
+                get_setting("exclude_password_manager", _DEFAULTS["exclude_password_manager"])
+            )
+        )
 
         self._set_combo_value(self._font_family_combo, get_setting("font_family", _DEFAULTS["font_family"]))
         self._set_combo_value(self._font_size_combo, get_setting("font_size", _DEFAULTS["font_size"]))
-        self._set_combo_value(self._preview_line_combo, get_setting("preview_line_count", _DEFAULTS["preview_line_count"]))
-        self._show_item_numbers_toggle.setChecked(_is_truthy(get_setting("show_item_numbers", _DEFAULTS["show_item_numbers"])))
-        self._show_timestamps_toggle.setChecked(_is_truthy(get_setting("show_timestamps", _DEFAULTS["show_timestamps"])))
-        self._show_app_names_toggle.setChecked(_is_truthy(get_setting("show_app_names", _DEFAULTS["show_app_names"])))
-        self._show_type_icons_toggle.setChecked(_is_truthy(get_setting("show_type_icons", _DEFAULTS["show_type_icons"])))
-
-        self._on_provider_changed(self._provider_combo.currentIndex())
+        self._set_combo_value(
+            self._preview_line_combo,
+            get_setting("preview_line_count", _DEFAULTS["preview_line_count"]),
+        )
+        self._show_item_numbers_toggle.setChecked(
+            _is_truthy(get_setting("show_item_numbers", _DEFAULTS["show_item_numbers"]))
+        )
+        self._show_timestamps_toggle.setChecked(
+            _is_truthy(get_setting("show_timestamps", _DEFAULTS["show_timestamps"]))
+        )
+        self._show_app_names_toggle.setChecked(
+            _is_truthy(get_setting("show_app_names", _DEFAULTS["show_app_names"]))
+        )
+        self._show_type_icons_toggle.setChecked(
+            _is_truthy(get_setting("show_type_icons", _DEFAULTS["show_type_icons"]))
+        )
 
     def _save_settings(self) -> None:
-        set_setting("ai_provider", self._provider_combo.currentData())
-        set_setting("openai_api_key", self.findChild(QLineEdit, "openaiKeyInput").text())
-        set_setting("gemini_api_key", self.findChild(QLineEdit, "geminiKeyInput").text())
         set_setting("theme", self._theme_combo.currentData())
 
         self._save_bool("launch_at_startup", self._launch_toggle)
@@ -615,37 +692,5 @@ class SettingsDialog(QDialog):
         if index >= 0:
             combo.setCurrentIndex(index)
 
-    def _on_provider_changed(self, index: int) -> None:
-        del index
-        provider = self._provider_combo.currentData()
-        self._openai_section.setVisible(provider == "openai")
-        self._gemini_section.setVisible(provider == "gemini")
-
-    def _test_connection(self, provider: str) -> None:
-        api_key = ""
-        if provider == "openai":
-            api_key = self.findChild(QLineEdit, "openaiKeyInput").text()
-        elif provider == "gemini":
-            api_key = self.findChild(QLineEdit, "geminiKeyInput").text()
-
-        if not api_key:
-            QMessageBox.warning(self, "エラー", "APIキーを入力してください")
-            return
-
-        success, message = test_api_connection(provider, api_key)
-        if success:
-            QMessageBox.information(self, "成功", message)
-        else:
-            QMessageBox.warning(self, "エラー", message)
-
     def get_theme_setting(self) -> str:
         return get_setting("theme", _DEFAULTS["theme"]) or _DEFAULTS["theme"]
-
-    def get_ai_provider(self) -> str:
-        return get_setting("ai_provider", _DEFAULTS["ai_provider"]) or _DEFAULTS["ai_provider"]
-
-    def get_openai_key(self) -> str:
-        return get_setting("openai_api_key", _DEFAULTS["openai_api_key"]) or ""
-
-    def get_gemini_key(self) -> str:
-        return get_setting("gemini_api_key", _DEFAULTS["gemini_api_key"]) or ""

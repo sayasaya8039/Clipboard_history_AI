@@ -1,5 +1,5 @@
 """
-クリップボード履歴 + AI整理アプリ
+クリップボード履歴アプリ
 
 コピーした内容を自動でカテゴリ分けして保存するアプリケーション
 """
@@ -8,7 +8,6 @@ from pathlib import Path
 
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import Qt
 
 # アプリケーションディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent))
@@ -50,7 +49,6 @@ class Application:
         """コンポーネントを初期化"""
         # クリップボード監視
         self.monitor = ClipboardMonitor()
-        self._update_ai_settings()
 
         # メインウィンドウ
         self.main_window = MainWindow()
@@ -93,11 +91,6 @@ class Application:
 
         self.app.setStyleSheet(get_stylesheet(dark))
 
-    def _update_ai_settings(self) -> None:
-        """AI設定を更新"""
-        provider = get_setting("ai_provider", "none")
-        self.monitor.set_use_ai(provider != "none")
-
     def _show_main_window(self) -> None:
         """メインウィンドウを表示"""
         self.main_window.show()
@@ -125,7 +118,6 @@ class Application:
     def _on_settings_changed(self) -> None:
         """設定変更時"""
         self._apply_theme()
-        self._update_ai_settings()
 
     def _quit(self) -> None:
         """アプリケーションを終了"""

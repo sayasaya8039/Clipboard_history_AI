@@ -5,6 +5,8 @@ from pathlib import Path
 
 from config import DATABASE_PATH
 
+_LEGACY_SETTING_KEYS = ("ai_provider", "openai_api_key", "gemini_api_key")
+
 
 def get_connection() -> sqlite3.Connection:
     """データベース接続を取得"""
@@ -46,6 +48,11 @@ def init_database() -> None:
             value TEXT
         )
     """)
+    # 使われなくなった AI 関連設定は起動時に掃除する。
+    cursor.executemany(
+        "DELETE FROM settings WHERE key = ?",
+        [(key,) for key in _LEGACY_SETTING_KEYS],
+    )
 
     conn.commit()
     conn.close()

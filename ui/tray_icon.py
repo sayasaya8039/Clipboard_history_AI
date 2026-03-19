@@ -2,10 +2,10 @@
 from typing import Optional
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
 from PyQt6.QtGui import (
-    QIcon, QPixmap, QPainter, QColor, QFont, QPen,
+    QIcon, QPixmap, QPainter, QColor, QPen,
     QLinearGradient, QRadialGradient, QPainterPath, QBrush
 )
-from PyQt6.QtCore import pyqtSignal, QObject, QPointF, QRectF, Qt
+from PyQt6.QtCore import pyqtSignal, QObject, QRectF, Qt
 
 from config import APP_NAME, RESOURCES_DIR
 
@@ -77,15 +77,6 @@ def create_default_icon() -> QIcon:
     for i in range(3):
         y = center + i * 4
         painter.drawLine(int(center - 6), int(y), int(center + 6), int(y))
-
-    # AIドット（パルス風）
-    ai_gradient = QRadialGradient(center, center + 12, 3)
-    ai_gradient.setColorAt(0.0, QColor(255, 255, 255, 255))
-    ai_gradient.setColorAt(0.5, QColor(0, 255, 200, 200))
-    ai_gradient.setColorAt(1.0, QColor(0, 200, 255, 0))
-    painter.setBrush(QBrush(ai_gradient))
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.drawEllipse(QPointF(center + 6, center - 2), 2, 2)
 
     painter.end()
 

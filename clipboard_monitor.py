@@ -12,7 +12,7 @@ from PyQt6.QtGui import QClipboard, QImage
 from PyQt6.QtWidgets import QApplication
 
 from config import IMAGES_DIR
-from database import add_history, check_hash_exists, get_setting
+from database import add_history, check_hash_exists
 from categorizer import categorize, is_image_file, extract_file_path
 
 
@@ -27,7 +27,6 @@ class ClipboardMonitor(QObject):
         self._clipboard: Optional[QClipboard] = None
         self._last_hash: Optional[str] = None
         self._monitoring = False
-        self._use_ai = get_setting("ai_provider", "none") != "none"
 
         # タイマーベースの監視（クリップボードシグナルが不安定な場合のフォールバック）
         self._timer = QTimer(self)
@@ -66,10 +65,6 @@ class ClipboardMonitor(QObject):
                 pass
 
         self._monitoring = False
-
-    def set_use_ai(self, use_ai: bool) -> None:
-        """AI分類の使用を設定"""
-        self._use_ai = use_ai
 
     def _on_clipboard_changed(self) -> None:
         """クリップボード変更時のコールバック"""
@@ -188,7 +183,7 @@ class ClipboardMonitor(QObject):
             return
 
         # カテゴリ分類
-        category = categorize(text, use_ai=self._use_ai)
+        category = categorize(text)
         source_app = self._get_source_app_name()
 
         # 画像ファイルパスの場合は特別処理

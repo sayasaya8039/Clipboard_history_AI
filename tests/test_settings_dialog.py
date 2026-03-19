@@ -32,12 +32,9 @@ class SettingsDialogTests(unittest.TestCase):
 
         init_database()
 
-    def test_load_settings_populates_figma_tabs_and_existing_keys(self) -> None:
+    def test_load_settings_populates_figma_tabs_without_ai_controls(self) -> None:
         self._seed_settings(
             {
-                "ai_provider": "gemini",
-                "openai_api_key": "sk-load-openai",
-                "gemini_api_key": "gm-load-gemini",
                 "theme": "light",
                 "launch_at_startup": "1",
                 "show_in_dock": "1",
@@ -57,50 +54,21 @@ class SettingsDialogTests(unittest.TestCase):
             ["一般", "履歴", "アイテム", "ショートカット", "外観"],
         )
 
-        provider_combo = dialog.findChild(QComboBox, "aiProviderCombo")
         theme_combo = dialog.findChild(QComboBox, "themeCombo")
-        openai_input = dialog.findChild(QLineEdit, "openaiKeyInput")
-        gemini_input = dialog.findChild(QLineEdit, "geminiKeyInput")
         dock_toggle = dialog.findChild(QCheckBox, "showInDockToggle")
         startup_toggle = dialog.findChild(QCheckBox, "launchAtStartupToggle")
         language_combo = dialog.findChild(QComboBox, "languageCombo")
 
-        self.assertIsNotNone(provider_combo)
-        self.assertEqual(provider_combo.currentData(), "gemini")
+        self.assertIsNone(dialog.findChild(QComboBox, "aiProviderCombo"))
+        self.assertIsNone(dialog.findChild(QLineEdit, "openaiKeyInput"))
+        self.assertIsNone(dialog.findChild(QLineEdit, "geminiKeyInput"))
         self.assertIsNotNone(theme_combo)
         self.assertEqual(theme_combo.currentData(), "light")
-        self.assertEqual(openai_input.text(), "sk-load-openai")
-        self.assertEqual(gemini_input.text(), "gm-load-gemini")
         self.assertTrue(dock_toggle.isChecked())
         self.assertTrue(startup_toggle.isChecked())
         self.assertEqual(language_combo.currentData(), "en")
 
-    def test_provider_change_toggles_api_groups(self) -> None:
-        dialog = SettingsDialog()
-        self.addCleanup(dialog.deleteLater)
-        dialog.show()
-        self.app.processEvents()
-
-        provider_combo = dialog.findChild(QComboBox, "aiProviderCombo")
-        openai_group = dialog.findChild(QLineEdit, "openaiKeyInput").parentWidget()
-        gemini_group = dialog.findChild(QLineEdit, "geminiKeyInput").parentWidget()
-
-        provider_combo.setCurrentIndex(provider_combo.findData("openai"))
-        self.app.processEvents()
-        self.assertTrue(openai_group.isVisible())
-        self.assertFalse(gemini_group.isVisible())
-
-        provider_combo.setCurrentIndex(provider_combo.findData("gemini"))
-        self.app.processEvents()
-        self.assertFalse(openai_group.isVisible())
-        self.assertTrue(gemini_group.isVisible())
-
-        provider_combo.setCurrentIndex(provider_combo.findData("none"))
-        self.app.processEvents()
-        self.assertFalse(openai_group.isVisible())
-        self.assertFalse(gemini_group.isVisible())
-
-    def test_dialog_keeps_figma_sized_frame_when_provider_changes(self) -> None:
+    def test_dialog_keeps_figma_sized_frame_without_ai_section(self) -> None:
         dialog = SettingsDialog()
         self.addCleanup(dialog.deleteLater)
         dialog.show()
@@ -109,20 +77,10 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertGreaterEqual(dialog.width(), 700)
         self.assertGreaterEqual(dialog.height(), 700)
 
-        provider_combo = dialog.findChild(QComboBox, "aiProviderCombo")
-        provider_combo.setCurrentIndex(provider_combo.findData("openai"))
-        self.app.processEvents()
-
-        self.assertGreaterEqual(dialog.width(), 700)
-        self.assertGreaterEqual(dialog.height(), 700)
-
-    def test_save_settings_persists_existing_and_additional_keys(self) -> None:
+    def test_save_settings_persists_supported_keys_without_legacy_ai_fields(self) -> None:
         dialog = SettingsDialog()
         self.addCleanup(dialog.deleteLater)
 
-        self._set_combo(dialog, "aiProviderCombo", "openai")
-        self._set_text(dialog, "openaiKeyInput", "sk-save-openai")
-        self._set_text(dialog, "geminiKeyInput", "gm-save-gemini")
         self._set_combo(dialog, "themeCombo", "dark")
         self._set_check(dialog, "launchAtStartupToggle", True)
         self._set_check(dialog, "showInDockToggle", True)
@@ -148,9 +106,9 @@ class SettingsDialogTests(unittest.TestCase):
 
         dialog._save_settings()
 
-        self.assertEqual(get_setting("ai_provider"), "openai")
-        self.assertEqual(get_setting("openai_api_key"), "sk-save-openai")
-        self.assertEqual(get_setting("gemini_api_key"), "gm-save-gemini")
+        self.assertIsNone(get_setting("ai_provider"))
+        self.assertIsNone(get_setting("openai_api_key"))
+        self.assertIsNone(get_setting("gemini_api_key"))
         self.assertEqual(get_setting("theme"), "dark")
         self.assertEqual(get_setting("launch_at_startup"), "1")
         self.assertEqual(get_setting("show_in_dock"), "1")
@@ -185,6 +143,23 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual(get_setting("max_history_items"), "200")
         self.assertEqual(get_setting("retention_days"), "0")
         self.assertEqual(get_setting("max_image_size_mb"), "10")
+
+    def test_init_database_removes_legacy_ai_settings(self) -> None:
+        self._seed_settings(
+            {
+                "ai_provider": "gemini",
+                "openai_api_key": "legacy-openai",
+                "gemini_api_key": "legacy-gemini",
+                "theme": "light",
+            }
+        )
+
+        init_database()
+
+        self.assertIsNone(get_setting("ai_provider"))
+        self.assertIsNone(get_setting("openai_api_key"))
+        self.assertIsNone(get_setting("gemini_api_key"))
+        self.assertEqual(get_setting("theme"), "light")
 
     def _seed_settings(self, values: dict[str, str]) -> None:
         from database import set_setting
