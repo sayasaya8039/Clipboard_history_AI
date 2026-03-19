@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from config import APP_NAME, APP_VERSION, RESOURCES_DIR
-from database import delete_history, get_history, toggle_favorite
+from database import delete_history, get_history, get_setting, toggle_favorite
 from ui.detail_panels import HistoryDetailPanel, SnippetDetailPanel
 from ui.dialogs import NewItemDialog, NewSnippetDialog
 from ui.sample_data import (
@@ -50,15 +50,13 @@ class MainWindow(QMainWindow):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
 
+        self._always_on_top = self._load_always_on_top_setting()
+
         self.setWindowTitle(APP_NAME)
         self.setWindowIcon(QIcon(str(RESOURCES_DIR / "icon.ico")))
         self.setMinimumSize(1200, 760)
         self.resize(1440, 900)
-        self.setWindowFlags(
-            Qt.WindowType.Window
-            | Qt.WindowType.FramelessWindowHint
-            | Qt.WindowType.WindowStaysOnTopHint
-        )
+        self.setWindowFlags(self._build_window_flags())
         self._corner_radius = 18
 
         self._has_centered_once = False
@@ -149,6 +147,16 @@ class MainWindow(QMainWindow):
         self._detail_stack.addWidget(self._history_detail)
         self._detail_stack.addWidget(self._snippet_detail)
         body.addWidget(self._detail_stack, 1)
+
+    @staticmethod
+    def _load_always_on_top_setting() -> bool:
+        return str(get_setting("show_in_dock", "1") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+    def _build_window_flags(self) -> Qt.WindowType:
+        flags = Qt.WindowType.Window | Qt.WindowType.FramelessWindowHint
+        if self._always_on_top:
+            flags |= Qt.WindowType.WindowStaysOnTopHint
+        return flags
 
     def _connect_signals(self) -> None:
         self._title_bar.close_requested.connect(self.close_requested.emit)
@@ -562,6 +570,28 @@ class MainWindow(QMainWindow):
         path = QPainterPath()
         path.addRoundedRect(QRectF(self.rect()), self._corner_radius, self._corner_radius)
         self.setMask(QRegion(path.toFillPolygon().toPolygon()))
+
+    def set_always_on_top(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if self._always_on_top == enabled:
+            return
+
+        was_visible = self.isVisible()
+        was_maximized = self.isMaximized()
+        geometry = self.geometry()
+
+        self._always_on_top = enabled
+        self.setWindowFlags(self._build_window_flags())
+
+        if was_maximized:
+            self.showMaximized()
+        elif was_visible:
+            self.show()
+            self.setGeometry(geometry)
+            self.raise_()
+            self.activateWindow()
+
+        QTimer.singleShot(0, self._update_window_mask)
 
     def toggle_maximize(self) -> None:
         if self.isMaximized():

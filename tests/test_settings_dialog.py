@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtWidgets import QApplication, QCheckBox, QComboBox, QLineEdit, QTabWidget
+from PyQt6.QtWidgets import QApplication, QCheckBox, QComboBox, QLabel, QLineEdit, QTabWidget
 
 from database import get_setting, init_database
 from startup import StartupRegistrationError
@@ -85,6 +85,16 @@ class SettingsDialogTests(unittest.TestCase):
 
         self.assertGreaterEqual(dialog.width(), 700)
         self.assertGreaterEqual(dialog.height(), 700)
+
+    def test_general_tab_uses_always_on_top_copy_instead_of_dock_copy(self) -> None:
+        dialog = SettingsDialog()
+        self.addCleanup(dialog.deleteLater)
+
+        texts = [label.text() for label in dialog.findChildren(QLabel)]
+
+        self.assertIn("最前面に表示", texts)
+        self.assertIn("ウィンドウを常に手前に表示します。", texts)
+        self.assertNotIn("Dock に表示", texts)
 
     def test_save_settings_persists_supported_keys_without_legacy_ai_fields(self) -> None:
         dialog = SettingsDialog()

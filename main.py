@@ -132,6 +132,7 @@ class Application:
     def _on_settings_changed(self) -> None:
         """設定変更時"""
         self._apply_theme()
+        self.main_window.set_always_on_top(get_setting("show_in_dock", "1") == "1")
 
     def _quit(self) -> None:
         """アプリケーションを終了"""

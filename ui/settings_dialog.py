@@ -35,7 +35,7 @@ _DEFAULTS: dict[str, str] = {
     "theme": "dark",
     "launch_at_startup": "0",
     "show_in_menubar": "1",
-    "show_in_dock": "0",
+    "show_in_dock": "1",
     "language": "ja",
     "notification_level": "all",
     "monitor_clipboard": "1",
@@ -182,8 +182,8 @@ class SettingsDialog(QDialog):
         self._dock_toggle = self._create_toggle("showInDockToggle")
         layout.addWidget(
             self._create_toggle_row(
-                "Dock に表示",
-                "macOS 風表現の項目として残し、Windows では表示設定として扱います。",
+                "最前面に表示",
+                "ウィンドウを常に手前に表示します。",
                 self._dock_toggle,
             )
         )
