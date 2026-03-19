@@ -20,12 +20,21 @@ from PyQt6.QtWidgets import (
 )
 
 from config import APP_NAME, APP_VERSION, RESOURCES_DIR
-from database import delete_history, get_history, get_setting, toggle_favorite
+from database import (
+    create_snippet,
+    delete_history,
+    delete_snippet,
+    get_history,
+    get_setting,
+    list_snippets,
+    toggle_favorite,
+    toggle_snippet_favorite,
+    update_snippet,
+)
 from ui.detail_panels import HistoryDetailPanel, SnippetDetailPanel
 from ui.dialogs import NewItemDialog, NewSnippetDialog
 from ui.sample_data import (
     build_history_samples,
-    build_snippet_samples,
     normalize_preview,
     parse_datetime,
 )
@@ -65,9 +74,7 @@ class MainWindow(QMainWindow):
         self._selected_history_id: str | None = None
         self._selected_snippet_id: str | None = None
         self._manual_history_items: list[dict[str, Any]] = []
-        self._manual_snippet_items: list[dict[str, Any]] = []
         self._history_seed = build_history_samples()
-        self._snippet_seed = build_snippet_samples()
 
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
@@ -271,7 +278,8 @@ class MainWindow(QMainWindow):
         return self._sort_by_timestamp(items, "created_at")
 
     def _snippet_items(self) -> list[dict[str, Any]]:
-        items = [*self._snippet_seed, *self._manual_snippet_items]
+        rows = list_snippets()
+        items = [self._normalize_snippet_row(row) for row in rows]
         return self._sort_by_timestamp(items, "created_at")
 
     def _filter_history_items(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -380,19 +388,14 @@ class MainWindow(QMainWindow):
         self._refresh_history_view()
 
     def _add_manual_snippet(self, payload: dict[str, Any]) -> None:
-        item_id = f"manual-snippet-{uuid.uuid4().hex[:8]}"
-        item = {
-            "id": item_id,
-            "name": payload.get("name") or "",
-            "content": payload.get("content") or "",
-            "description": payload.get("description") or None,
-            "tags": list(payload.get("tags") or []),
-            "favorite": bool(payload.get("favorite", False)),
-            "created_at": datetime.now(),
-        }
-        item["preview"] = str(payload.get("preview") or normalize_preview(str(item["content"])))
-        self._manual_snippet_items = [item, *self._manual_snippet_items]
-        self._selected_snippet_id = item_id
+        snippet_id = create_snippet(
+            name=str(payload.get("name") or ""),
+            content=str(payload.get("content") or ""),
+            description=payload.get("description") or None,
+            tags=list(payload.get("tags") or []),
+            favorite=bool(payload.get("favorite", False)),
+        )
+        self._selected_snippet_id = f"db-snippet-{snippet_id}"
         self._refresh_snippet_view()
 
     def _current_history_item(self) -> dict[str, Any] | None:
@@ -448,13 +451,9 @@ class MainWindow(QMainWindow):
         if not item:
             return
 
-        item_id = str(item.get("id"))
-        self._manual_snippet_items = [
-            snippet for snippet in self._manual_snippet_items if str(snippet.get("id")) != item_id
-        ]
-        self._snippet_seed = [
-            snippet for snippet in self._snippet_seed if str(snippet.get("id")) != item_id
-        ]
+        storage_id = item.get("storage_id")
+        if storage_id is not None:
+            delete_snippet(int(storage_id))
         self._selected_snippet_id = None
         self._refresh_snippet_view()
 
@@ -474,17 +473,9 @@ class MainWindow(QMainWindow):
         if not item:
             return
 
-        item_id = str(item.get("id"))
-        if item_id.startswith("manual-snippet-"):
-            for snippet in self._manual_snippet_items:
-                if str(snippet.get("id")) == item_id:
-                    snippet["favorite"] = not bool(snippet.get("favorite"))
-                    break
-        else:
-            for snippet in self._snippet_seed:
-                if str(snippet.get("id")) == item_id:
-                    snippet["favorite"] = not bool(snippet.get("favorite"))
-                    break
+        storage_id = item.get("storage_id")
+        if storage_id is not None:
+            toggle_snippet_favorite(int(storage_id))
 
         self._refresh_snippet_view()
 
@@ -508,35 +499,51 @@ class MainWindow(QMainWindow):
 
     def _update_snippet_item(self, payload: dict[str, Any]) -> None:
         item_id = str(payload.get("id") or "")
-        created_at = payload.get("created_at") or datetime.now()
-        updated = {
-            "id": item_id,
-            "name": payload.get("name") or "",
-            "content": payload.get("content") or "",
-            "description": payload.get("description") or None,
-            "tags": list(payload.get("tags") or []),
-            "favorite": bool(payload.get("favorite", False)),
-            "created_at": created_at,
-            "preview": str(payload.get("preview") or normalize_preview(str(payload.get("content") or ""))),
-        }
+        storage_id = self._extract_storage_id(item_id, "db-snippet-")
+        if storage_id is None:
+            return
 
-        replaced = False
-        for index, snippet in enumerate(self._manual_snippet_items):
-            if str(snippet.get("id")) == item_id:
-                self._manual_snippet_items[index] = updated
-                replaced = True
-                break
-
-        if not replaced:
-            for index, snippet in enumerate(self._snippet_seed):
-                if str(snippet.get("id")) == item_id:
-                    self._snippet_seed[index] = updated
-                    replaced = True
-                    break
-
-        if replaced:
+        updated = update_snippet(
+            storage_id,
+            name=str(payload.get("name") or ""),
+            content=str(payload.get("content") or ""),
+            description=payload.get("description") or None,
+            tags=list(payload.get("tags") or []),
+            favorite=bool(payload.get("favorite", False)),
+            created_at=self._format_datetime_value(payload.get("created_at")),
+        )
+        if updated:
             self._selected_snippet_id = item_id
             self._refresh_snippet_view()
+
+    def _normalize_snippet_row(self, row: dict[str, Any]) -> dict[str, Any]:
+        storage_id = row.get("id")
+        content = str(row.get("content") or "")
+        created_at = parse_datetime(row.get("created_at")) or datetime.now()
+        return {
+            "id": f"db-snippet-{storage_id}",
+            "storage_id": storage_id,
+            "name": row.get("name") or "",
+            "content": content,
+            "description": row.get("description") or None,
+            "tags": list(row.get("tags") or []),
+            "favorite": bool(row.get("favorite")),
+            "created_at": created_at,
+            "preview": str(row.get("preview") or normalize_preview(content)),
+        }
+
+    def _extract_storage_id(self, item_id: str, prefix: str) -> int | None:
+        if not item_id.startswith(prefix):
+            return None
+        raw_value = item_id.removeprefix(prefix)
+        return int(raw_value) if raw_value.isdigit() else None
+
+    def _format_datetime_value(self, value: Any) -> str | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.strftime("%Y-%m-%d %H:%M:%S")
+        return str(value)
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)

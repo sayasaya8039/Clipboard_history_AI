@@ -133,6 +133,8 @@ class Application:
         """設定変更時"""
         self._apply_theme()
         self.main_window.set_always_on_top(get_setting("show_in_dock", "1") == "1")
+        self.main_window.refresh_history()
+        self.main_window.refresh_snippets()
 
     def _quit(self) -> None:
         """アプリケーションを終了"""

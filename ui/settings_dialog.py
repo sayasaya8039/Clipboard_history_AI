@@ -1,6 +1,7 @@
 """macOS 風設定ダイアログ。"""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -9,6 +10,7 @@ from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -23,6 +25,12 @@ from PyQt6.QtWidgets import (
 )
 
 from config import DATABASE_PATH
+from csv_transfer import (
+    export_history_csv,
+    export_snippets_csv,
+    import_history_csv,
+    import_snippets_csv,
+)
 from database import get_setting, set_setting
 from startup import (
     StartupRegistrationError,
@@ -142,6 +150,7 @@ class SettingsDialog(QDialog):
         self._build_items_tab()
         self._build_shortcuts_tab()
         self._build_appearance_tab()
+        self._build_transfer_tab()
 
         button_layout = QHBoxLayout()
         button_layout.addStretch(1)
@@ -459,6 +468,76 @@ class SettingsDialog(QDialog):
         layout.addStretch(1)
         self._tabs.addTab(page, "外観")
 
+    def _build_transfer_tab(self) -> None:
+        page, layout = self._create_tab_page("出力取込")
+
+        layout.addWidget(self._create_section_heading("履歴データ"))
+        self._history_export_path_input = self._create_line_edit("historyExportPathInput", "history.csv")
+        self._history_export_path_input.setReadOnly(True)
+        self._history_export_encoding_combo = self._create_encoding_combo("historyExportEncodingCombo")
+        layout.addWidget(
+            self._create_transfer_block(
+                "CSV出力",
+                "履歴データを CSV に保存します。",
+                self._history_export_path_input,
+                lambda: self._browse_save_path(self._history_export_path_input, "履歴 CSV の保存先", "history.csv"),
+                self._history_export_encoding_combo,
+                "出力",
+                self._export_history_csv,
+            )
+        )
+
+        self._history_import_path_input = self._create_line_edit("historyImportPathInput", "history.csv")
+        self._history_import_path_input.setReadOnly(True)
+        self._history_import_encoding_combo = self._create_encoding_combo("historyImportEncodingCombo")
+        layout.addWidget(
+            self._create_transfer_block(
+                "CSV取込",
+                "履歴データを CSV から追加取込します。",
+                self._history_import_path_input,
+                lambda: self._browse_open_path(self._history_import_path_input, "履歴 CSV を選択"),
+                self._history_import_encoding_combo,
+                "取込",
+                self._import_history_csv,
+            )
+        )
+
+        layout.addWidget(self._create_separator())
+
+        layout.addWidget(self._create_section_heading("定型文データ"))
+        self._snippet_export_path_input = self._create_line_edit("snippetExportPathInput", "snippets.csv")
+        self._snippet_export_path_input.setReadOnly(True)
+        self._snippet_export_encoding_combo = self._create_encoding_combo("snippetExportEncodingCombo")
+        layout.addWidget(
+            self._create_transfer_block(
+                "CSV出力",
+                "定型文データを CSV に保存します。",
+                self._snippet_export_path_input,
+                lambda: self._browse_save_path(self._snippet_export_path_input, "定型文 CSV の保存先", "snippets.csv"),
+                self._snippet_export_encoding_combo,
+                "出力",
+                self._export_snippets_csv,
+            )
+        )
+
+        self._snippet_import_path_input = self._create_line_edit("snippetImportPathInput", "snippets.csv")
+        self._snippet_import_path_input.setReadOnly(True)
+        self._snippet_import_encoding_combo = self._create_encoding_combo("snippetImportEncodingCombo")
+        layout.addWidget(
+            self._create_transfer_block(
+                "CSV取込",
+                "定型文データを CSV から追加取込します。",
+                self._snippet_import_path_input,
+                lambda: self._browse_open_path(self._snippet_import_path_input, "定型文 CSV を選択"),
+                self._snippet_import_encoding_combo,
+                "取込",
+                self._import_snippets_csv,
+            )
+        )
+
+        layout.addStretch(1)
+        self._tabs.addTab(page, "出力/取込")
+
     def _create_tab_page(self, name: str) -> tuple[QWidget, QVBoxLayout]:
         page = QWidget()
         page_layout = QVBoxLayout(page)
@@ -506,6 +585,14 @@ class SettingsDialog(QDialog):
         line_edit.setPlaceholderText(placeholder)
         return line_edit
 
+    def _create_encoding_combo(self, object_name: str) -> QComboBox:
+        combo = self._create_combo(
+            object_name,
+            [("Shift_JIS", "shift_jis"), ("UTF-8", "utf-8")],
+        )
+        self._set_combo_value(combo, "shift_jis")
+        return combo
+
     def _create_number_edit(self, object_name: str, placeholder: str) -> QLineEdit:
         line_edit = self._create_line_edit(object_name, placeholder)
         line_edit.setValidator(QIntValidator(0, 999999, line_edit))
@@ -530,6 +617,46 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(field)
         return block
+
+    def _create_transfer_block(
+        self,
+        title: str,
+        description: str,
+        path_input: QLineEdit,
+        browse_handler,
+        encoding_combo: QComboBox,
+        action_text: str,
+        action_handler,
+    ) -> QFrame:
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(10)
+
+        path_row = QHBoxLayout()
+        path_row.setContentsMargins(0, 0, 0, 0)
+        path_row.setSpacing(10)
+        path_row.addWidget(path_input, 1)
+        browse_button = QPushButton("参照")
+        browse_button.setObjectName("settingsSecondaryButton")
+        browse_button.clicked.connect(browse_handler)
+        path_row.addWidget(browse_button)
+        content_layout.addLayout(path_row)
+
+        action_row = QHBoxLayout()
+        action_row.setContentsMargins(0, 0, 0, 0)
+        action_row.setSpacing(10)
+        label = QLabel("文字コード")
+        label.setObjectName("settingsRowTitle")
+        action_row.addWidget(label)
+        action_row.addWidget(encoding_combo, 1)
+        action_button = QPushButton(action_text)
+        action_button.setObjectName("settingsPrimaryButton")
+        action_button.clicked.connect(action_handler)
+        action_row.addWidget(action_button)
+        content_layout.addLayout(action_row)
+
+        return self._create_field_block(title, description, content)
 
     def _create_toggle_row(self, title: str, description: str, toggle: QCheckBox) -> QFrame:
         row = QFrame()
@@ -713,3 +840,132 @@ class SettingsDialog(QDialog):
 
     def get_theme_setting(self) -> str:
         return get_setting("theme", _DEFAULTS["theme"]) or _DEFAULTS["theme"]
+
+    def _browse_save_path(self, target: QLineEdit, title: str, default_name: str) -> None:
+        selected, _ = QFileDialog.getSaveFileName(
+            self,
+            title,
+            str(Path.cwd() / default_name),
+            "CSV Files (*.csv)",
+        )
+        if selected:
+            target.setText(selected)
+
+    def _browse_open_path(self, target: QLineEdit, title: str) -> None:
+        selected, _ = QFileDialog.getOpenFileName(
+            self,
+            title,
+            str(Path.cwd()),
+            "CSV Files (*.csv)",
+        )
+        if selected:
+            target.setText(selected)
+
+    def _resolve_output_path(self, target: QLineEdit, title: str, default_name: str) -> Optional[Path]:
+        current = target.text().strip()
+        if current:
+            return Path(current)
+        self._browse_save_path(target, title, default_name)
+        current = target.text().strip()
+        return Path(current) if current else None
+
+    def _resolve_input_path(self, target: QLineEdit, title: str) -> Optional[Path]:
+        current = target.text().strip()
+        if current:
+            return Path(current)
+        self._browse_open_path(target, title)
+        current = target.text().strip()
+        return Path(current) if current else None
+
+    def _export_history_csv(self) -> None:
+        self._run_export(
+            self._history_export_path_input,
+            "履歴 CSV の保存先",
+            "history.csv",
+            self._history_export_encoding_combo.currentData(),
+            export_history_csv,
+            "履歴データを",
+        )
+
+    def _import_history_csv(self) -> None:
+        self._run_import(
+            self._history_import_path_input,
+            "履歴 CSV を選択",
+            self._history_import_encoding_combo.currentData(),
+            import_history_csv,
+            "履歴データ",
+        )
+
+    def _export_snippets_csv(self) -> None:
+        self._run_export(
+            self._snippet_export_path_input,
+            "定型文 CSV の保存先",
+            "snippets.csv",
+            self._snippet_export_encoding_combo.currentData(),
+            export_snippets_csv,
+            "定型文データを",
+        )
+
+    def _import_snippets_csv(self) -> None:
+        self._run_import(
+            self._snippet_import_path_input,
+            "定型文 CSV を選択",
+            self._snippet_import_encoding_combo.currentData(),
+            import_snippets_csv,
+            "定型文データ",
+        )
+
+    def _run_export(
+        self,
+        target: QLineEdit,
+        title: str,
+        default_name: str,
+        encoding: str,
+        export_handler,
+        subject: str,
+    ) -> None:
+        path = self._resolve_output_path(target, title, default_name)
+        if path is None:
+            return
+        try:
+            count = export_handler(path, encoding=encoding)
+        except (OSError, UnicodeError, ValueError) as exc:
+            QMessageBox.warning(self, "CSV 出力に失敗しました", str(exc))
+            return
+
+        target.setText(str(path))
+        QMessageBox.information(
+            self,
+            "CSV 出力",
+            f"{subject}{count}件出力しました。\n{path}",
+        )
+
+    def _run_import(
+        self,
+        target: QLineEdit,
+        title: str,
+        encoding: str,
+        import_handler,
+        subject: str,
+    ) -> None:
+        path = self._resolve_input_path(target, title)
+        if path is None:
+            return
+        try:
+            result = import_handler(path, encoding=encoding)
+        except (OSError, UnicodeError, ValueError) as exc:
+            QMessageBox.warning(self, "CSV 取込に失敗しました", str(exc))
+            return
+
+        target.setText(str(path))
+        QMessageBox.information(
+            self,
+            "CSV 取込",
+            (
+                f"{subject}の取込が完了しました。\n"
+                f"追加: {result.added_count} 件\n"
+                f"更新: {result.updated_count} 件\n"
+                f"スキップ: {result.skipped_count} 件"
+            ),
+        )
+        self.settings_changed.emit()

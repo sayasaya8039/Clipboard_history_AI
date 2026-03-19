@@ -57,6 +57,24 @@ class MainWindowTests(unittest.TestCase):
         window.set_always_on_top(False)
         self.assertFalse(bool(window.windowFlags() & Qt.WindowType.WindowStaysOnTopHint))
 
+    def test_window_reads_persisted_snippets_from_database(self) -> None:
+        from database import create_snippet
+
+        create_snippet(
+            name="署名",
+            content="よろしくお願いします。",
+            description="メール用",
+            tags=["mail"],
+            favorite=True,
+            created_at="2026-03-20 10:00:00",
+        )
+
+        window = MainWindow()
+        self.addCleanup(window.deleteLater)
+
+        snippet_names = [item["name"] for item in window._snippet_items()]
+        self.assertIn("署名", snippet_names)
+
 
 if __name__ == "__main__":
     unittest.main()

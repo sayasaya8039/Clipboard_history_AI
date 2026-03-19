@@ -41,6 +41,20 @@ def init_database() -> None:
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_content_hash ON clipboard_history(content_hash)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_is_favorite ON clipboard_history(is_favorite)")
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS snippets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            content TEXT NOT NULL,
+            description TEXT,
+            tags TEXT NOT NULL DEFAULT '',
+            favorite BOOLEAN DEFAULT FALSE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_snippets_created_at ON snippets(created_at)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_snippets_name_content ON snippets(name, content)")
+
     # 設定テーブル
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS settings (
@@ -73,6 +87,8 @@ def add_history(
     content: Optional[str] = None,
     image_path: Optional[str] = None,
     app: Optional[str] = None,
+    is_favorite: bool = False,
+    created_at: Optional[str] = None,
 ) -> Optional[int]:
     """履歴を追加（重複時はNoneを返す）"""
     conn = get_connection()
@@ -81,10 +97,28 @@ def add_history(
     try:
         cursor.execute(
             """
-            INSERT INTO clipboard_history (content_type, content, image_path, content_hash, category, app)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO clipboard_history (
+                content_type,
+                content,
+                image_path,
+                content_hash,
+                category,
+                app,
+                is_favorite,
+                created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
             """,
-            (content_type, content, image_path, content_hash, category, app),
+            (
+                content_type,
+                content,
+                image_path,
+                content_hash,
+                category,
+                app,
+                bool(is_favorite),
+                created_at,
+            ),
         )
         conn.commit()
         return cursor.lastrowid
@@ -127,6 +161,16 @@ def get_history(
     rows = cursor.fetchall()
     conn.close()
 
+    return [dict(row) for row in rows]
+
+
+def get_all_history() -> list[dict]:
+    """全履歴を取得"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM clipboard_history ORDER BY created_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
     return [dict(row) for row in rows]
 
 
@@ -259,3 +303,171 @@ def check_hash_exists(content_hash: str) -> bool:
     conn.close()
 
     return exists
+
+
+def history_entry_exists(
+    content_type: str,
+    content: Optional[str],
+    image_path: Optional[str],
+    category: str,
+    app: Optional[str],
+) -> bool:
+    """同一内容の履歴が存在するか確認する。"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT 1
+        FROM clipboard_history
+        WHERE content_type = ?
+          AND COALESCE(content, '') = ?
+          AND COALESCE(image_path, '') = ?
+          AND category = ?
+          AND COALESCE(app, '') = ?
+        LIMIT 1
+        """,
+        (
+            content_type,
+            content or "",
+            image_path or "",
+            category,
+            app or "",
+        ),
+    )
+    exists = cursor.fetchone() is not None
+    conn.close()
+    return exists
+
+
+def list_snippets() -> list[dict]:
+    """定型文を取得"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM snippets ORDER BY created_at DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [_normalize_snippet_row(dict(row)) for row in rows]
+
+
+def create_snippet(
+    name: str,
+    content: str,
+    description: Optional[str] = None,
+    tags: Optional[list[str]] = None,
+    favorite: bool = False,
+    created_at: Optional[str] = None,
+) -> int:
+    """定型文を追加"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO snippets (name, content, description, tags, favorite, created_at)
+        VALUES (?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
+        """,
+        (
+            name,
+            content,
+            description,
+            _serialize_tags(tags),
+            bool(favorite),
+            created_at,
+        ),
+    )
+    conn.commit()
+    snippet_id = cursor.lastrowid
+    conn.close()
+    return snippet_id
+
+
+def update_snippet(
+    snippet_id: int,
+    name: str,
+    content: str,
+    description: Optional[str] = None,
+    tags: Optional[list[str]] = None,
+    favorite: bool = False,
+    created_at: Optional[str] = None,
+) -> bool:
+    """定型文を更新"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE snippets
+        SET name = ?,
+            content = ?,
+            description = ?,
+            tags = ?,
+            favorite = ?,
+            created_at = COALESCE(?, created_at)
+        WHERE id = ?
+        """,
+        (
+            name,
+            content,
+            description,
+            _serialize_tags(tags),
+            bool(favorite),
+            created_at,
+            snippet_id,
+        ),
+    )
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return affected > 0
+
+
+def delete_snippet(snippet_id: int) -> bool:
+    """定型文を削除"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM snippets WHERE id = ?", (snippet_id,))
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return affected > 0
+
+
+def toggle_snippet_favorite(snippet_id: int) -> bool:
+    """定型文のお気に入り状態をトグル"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE snippets SET favorite = NOT favorite WHERE id = ?",
+        (snippet_id,),
+    )
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return affected > 0
+
+
+def find_snippet_by_name_and_content(name: str, content: str) -> Optional[dict]:
+    """名前と内容で定型文を検索"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM snippets WHERE name = ? AND content = ? LIMIT 1",
+        (name, content),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return _normalize_snippet_row(dict(row)) if row else None
+
+
+def _serialize_tags(tags: Optional[list[str]]) -> str:
+    return ",".join(tag.strip() for tag in tags or [] if str(tag).strip())
+
+
+def _deserialize_tags(value: Optional[str]) -> list[str]:
+    if not value:
+        return []
+    return [tag.strip() for tag in str(value).split(",") if tag.strip()]
+
+
+def _normalize_snippet_row(row: dict) -> dict:
+    row["favorite"] = bool(row.get("favorite"))
+    row["tags"] = _deserialize_tags(row.get("tags"))
+    return row

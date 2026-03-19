@@ -17,7 +17,7 @@ DATABASE_PATH = DATA_DIR / "clipboard_history.db"
 
 # アプリケーション設定
 APP_NAME = "クリップボード履歴"
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.1.0"
 
 # カテゴリ定義
 CATEGORIES = {

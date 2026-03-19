@@ -57,10 +57,10 @@ class SettingsDialogTests(unittest.TestCase):
 
         tab_widget = dialog.findChild(QTabWidget, "settingsTabs")
         self.assertIsNotNone(tab_widget)
-        self.assertEqual(tab_widget.count(), 5)
+        self.assertEqual(tab_widget.count(), 6)
         self.assertEqual(
             [tab_widget.tabText(index) for index in range(tab_widget.count())],
-            ["一般", "履歴", "アイテム", "ショートカット", "外観"],
+            ["一般", "履歴", "アイテム", "ショートカット", "外観", "出力/取込"],
         )
 
         theme_combo = dialog.findChild(QComboBox, "themeCombo")
@@ -76,6 +76,71 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertTrue(dock_toggle.isChecked())
         self.assertTrue(startup_toggle.isChecked())
         self.assertEqual(language_combo.currentData(), "en")
+
+    def test_transfer_tab_exposes_history_and_snippet_csv_controls(self) -> None:
+        dialog = SettingsDialog()
+        self.addCleanup(dialog.deleteLater)
+
+        tab_widget = dialog.findChild(QTabWidget, "settingsTabs")
+        self.assertEqual(tab_widget.tabText(tab_widget.count() - 1), "出力/取込")
+
+        self.assertIsNotNone(dialog.findChild(QComboBox, "historyExportEncodingCombo"))
+        self.assertIsNotNone(dialog.findChild(QComboBox, "historyImportEncodingCombo"))
+        self.assertIsNotNone(dialog.findChild(QComboBox, "snippetExportEncodingCombo"))
+        self.assertIsNotNone(dialog.findChild(QComboBox, "snippetImportEncodingCombo"))
+        self.assertIsNotNone(dialog.findChild(QLineEdit, "historyExportPathInput"))
+        self.assertIsNotNone(dialog.findChild(QLineEdit, "historyImportPathInput"))
+        self.assertIsNotNone(dialog.findChild(QLineEdit, "snippetExportPathInput"))
+        self.assertIsNotNone(dialog.findChild(QLineEdit, "snippetImportPathInput"))
+
+    def test_export_history_action_uses_selected_path_and_encoding(self) -> None:
+        dialog = SettingsDialog()
+        self.addCleanup(dialog.deleteLater)
+
+        export_path = Path(self._tempdir.name) / "history.csv"
+        dialog.findChild(QLineEdit, "historyExportPathInput").setText(str(export_path))
+        self._set_combo(dialog, "historyExportEncodingCombo", "utf-8")
+
+        with (
+            patch("ui.settings_dialog.export_history_csv", return_value=3) as export_csv,
+            patch("ui.settings_dialog.QMessageBox.information") as information,
+        ):
+            dialog._export_history_csv()
+
+        export_csv.assert_called_once_with(export_path, encoding="utf-8")
+        information.assert_called_once()
+
+    def test_import_snippets_action_emits_settings_changed(self) -> None:
+        dialog = SettingsDialog()
+        self.addCleanup(dialog.deleteLater)
+
+        import_path = Path(self._tempdir.name) / "snippets.csv"
+        import_path.write_text(
+            "\n".join(
+                [
+                    "name,content,description,tags,favorite,created_at",
+                    "署名,よろしくお願いします。,メール用,\"mail,jp\",1,2026-03-20 10:00:00",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        dialog.findChild(QLineEdit, "snippetImportPathInput").setText(str(import_path))
+
+        changed_calls: list[bool] = []
+        dialog.settings_changed.connect(lambda: changed_calls.append(True))
+
+        with (
+            patch("ui.settings_dialog.import_snippets_csv") as import_csv,
+            patch("ui.settings_dialog.QMessageBox.information") as information,
+        ):
+            import_csv.return_value.added_count = 1
+            import_csv.return_value.updated_count = 0
+            import_csv.return_value.skipped_count = 0
+            dialog._import_snippets_csv()
+
+        import_csv.assert_called_once_with(import_path, encoding="shift_jis")
+        information.assert_called_once()
+        self.assertEqual(changed_calls, [True])
 
     def test_dialog_keeps_figma_sized_frame_without_ai_section(self) -> None:
         dialog = SettingsDialog()

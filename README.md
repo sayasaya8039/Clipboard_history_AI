@@ -25,6 +25,10 @@
   - お気に入り
   - ワンクリックコピー
   - URL をブラウザで開く
+- データ入出力
+  - 履歴データの CSV 出力 / 取込
+  - 定型文データの CSV 出力 / 取込
+  - UTF-8 / Shift_JIS 対応
 - UI
   - システムトレイ常駐
   - ダーク / ライト / システムテーマ
@@ -84,6 +88,7 @@ Clipboard_history_AI/
 ├── main.py                 # エントリーポイント
 ├── config.py               # 設定管理
 ├── database.py             # SQLite 操作
+├── csv_transfer.py         # 履歴 / 定型文の CSV 出力・取込
 ├── categorizer.py          # ルールベース分類
 ├── clipboard_monitor.py    # クリップボード監視
 ├── ui/
