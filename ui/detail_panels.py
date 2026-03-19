@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
 
 from ui.iconography import icon_font, icon_glyph
 from ui.sample_data import format_japanese_datetime
-from ui.widgets import _clear_layout, _make_button, _make_glyph_font
+from ui.widgets import _clear_layout, _make_button, _make_glyph_font, _repolish
 
 
 class HistoryDetailPanel(QFrame):
@@ -142,7 +142,8 @@ class HistoryDetailPanel(QFrame):
 
     def _update_pin_button(self, pinned: bool) -> None:
         self._pin_button.setText(icon_glyph("pinned" if pinned else "pin"))
-        self._pin_button.setStyleSheet("color: #2d7ff9;" if pinned else "color: #f3f3f3;")
+        self._pin_button.setProperty("pinned", pinned)
+        _repolish(self._pin_button)
 
     def _empty_widget(self, text: str) -> QWidget:
         widget = QWidget()
@@ -324,6 +325,10 @@ class SnippetDetailPanel(QFrame):
         self._description_label.setVisible(False)
         self._footer_label.setText("")
         self._favorite_badge.setVisible(False)
+        self._favorite_badge.setProperty("favorite", False)
+        _repolish(self._favorite_badge)
+        self._favorite_button.setProperty("favorite", False)
+        _repolish(self._favorite_button)
         self._meta_frame.setVisible(False)
         self._set_tags([])
         self._toggle_controls(False)
@@ -345,8 +350,11 @@ class SnippetDetailPanel(QFrame):
         favorite = bool(item.get("favorite"))
         self._favorite_badge.setVisible(True)
         self._favorite_badge.setText(icon_glyph("favorite_fill" if favorite else "favorite"))
-        self._favorite_badge.setStyleSheet("color: #f59e0b;" if favorite else "color: #6f6f6f;")
         self._favorite_button.setText(icon_glyph("favorite_fill" if favorite else "favorite"))
+        self._favorite_badge.setProperty("favorite", favorite)
+        self._favorite_button.setProperty("favorite", favorite)
+        _repolish(self._favorite_badge)
+        _repolish(self._favorite_button)
 
         self._toggle_controls(True)
         self._set_tags(tags)

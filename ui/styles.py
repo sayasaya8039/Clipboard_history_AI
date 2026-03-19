@@ -23,41 +23,61 @@ def is_dark_mode() -> bool:
 
 
 FIGMA_DARK = {
-    "bg": "#171717",
-    "surface": "#1d1d1d",
-    "panel": "#202020",
-    "panel_alt": "#242424",
-    "panel_soft": "#262626",
-    "topbar": "#1f1f1f",
-    "border": "#303030",
-    "border_soft": "#383838",
-    "text": "#f3f3f3",
-    "text_soft": "#a0a0a0",
-    "text_dim": "#707070",
-    "accent": "#2d7ff9",
-    "accent_hover": "#3b87ff",
-    "accent_soft": "rgba(45, 127, 249, 0.22)",
-    "accent_soft_2": "rgba(45, 127, 249, 0.14)",
+    "bg": "#151618",
+    "surface": "#1b1d21",
+    "panel": "#21242a",
+    "panel_alt": "#262a31",
+    "panel_soft": "#2d323a",
+    "topbar": "#191b1f",
+    "border": "#373c45",
+    "border_soft": "#4a515c",
+    "text": "#f5f7fa",
+    "text_soft": "#b3bcc8",
+    "text_dim": "#7d8794",
+    "accent": "#4a84e8",
+    "accent_hover": "#6197f5",
+    "accent_soft": "rgba(74, 132, 232, 0.24)",
+    "accent_soft_2": "rgba(74, 132, 232, 0.10)",
+    "hover": "rgba(255, 255, 255, 0.055)",
+    "segmented_checked_bg": "#eceff4",
+    "segmented_checked_text": "#14181f",
+    "segmented_checked_border": "rgba(255, 255, 255, 0.08)",
+    "selected_text": "#ffffff",
+    "selected_text_soft": "rgba(255, 255, 255, 0.86)",
+    "tag_blue_bg": "rgba(74, 132, 232, 0.20)",
+    "tag_blue_text": "#b7ceff",
+    "favorite_active": "#f6b84b",
+    "favorite_inactive": "#768090",
     "danger": "#ff5d57",
     "warning": "#f59e0b",
 }
 
 FIGMA_LIGHT = {
-    "bg": "#f4f4f4",
-    "surface": "#ffffff",
-    "panel": "#f8f8f8",
-    "panel_alt": "#efefef",
-    "panel_soft": "#e6e6e6",
-    "topbar": "#fafafa",
-    "border": "#d7d7d7",
-    "border_soft": "#cfcfcf",
-    "text": "#181818",
-    "text_soft": "#5f5f5f",
-    "text_dim": "#808080",
-    "accent": "#2563eb",
-    "accent_hover": "#1d4ed8",
-    "accent_soft": "rgba(37, 99, 235, 0.14)",
-    "accent_soft_2": "rgba(37, 99, 235, 0.08)",
+    "bg": "#f6f4ef",
+    "surface": "#fcfbf8",
+    "panel": "#f2efe8",
+    "panel_alt": "#ece8df",
+    "panel_soft": "#e3ddd2",
+    "topbar": "#f9f7f2",
+    "border": "#d6d0c5",
+    "border_soft": "#c7c0b4",
+    "text": "#1c1f24",
+    "text_soft": "#565f6d",
+    "text_dim": "#7e8794",
+    "accent": "#2f6fd6",
+    "accent_hover": "#255fc2",
+    "accent_soft": "rgba(47, 111, 214, 0.16)",
+    "accent_soft_2": "rgba(47, 111, 214, 0.08)",
+    "hover": "rgba(28, 31, 36, 0.045)",
+    "segmented_checked_bg": "#ffffff",
+    "segmented_checked_text": "#15181e",
+    "segmented_checked_border": "#dcd6cb",
+    "selected_text": "#ffffff",
+    "selected_text_soft": "rgba(255, 255, 255, 0.88)",
+    "tag_blue_bg": "rgba(47, 111, 214, 0.12)",
+    "tag_blue_text": "#2c5fb0",
+    "favorite_active": "#d98a14",
+    "favorite_inactive": "#8e96a0",
     "danger": "#dc2626",
     "warning": "#d97706",
 }
@@ -237,8 +257,8 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QLabel#emptyStateLabel {{
-            color: {t["text_dim"]};
-            font-size: 10px;
+            color: {t["text_soft"]};
+            font-size: 11px;
         }}
 
         QLabel#detailType,
@@ -257,7 +277,7 @@ def get_stylesheet(dark: bool = False) -> str:
 
         QLabel#favoriteBadge {{
             font-family: "Segoe Fluent Icons", "Segoe UI Symbol";
-            color: {t["warning"]};
+            color: {t["text_soft"]};
         }}
 
         QLabel#detailMuted {{
@@ -305,8 +325,8 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QLabel#tagPillBlue {{
-            background-color: rgba(45, 127, 249, 0.18);
-            color: #8cb9ff;
+            background-color: {t["tag_blue_bg"]};
+            color: {t["tag_blue_text"]};
             border-radius: 4px;
             padding: 1px 6px;
             font-size: 10px;
@@ -325,7 +345,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QPushButton:hover {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
         }}
 
         QPushButton:disabled {{
@@ -340,7 +360,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QPushButton#ghostButton:hover {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
         }}
 
         QPushButton#iconButton {{
@@ -353,10 +373,19 @@ def get_stylesheet(dark: bool = False) -> str:
             max-height: 30px;
             padding: 0;
             font-size: 12px;
+            color: {t["text_soft"]};
         }}
 
         QPushButton#iconButton:hover {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
+        }}
+
+        QPushButton#iconButton[pinned="true"] {{
+            color: {t["accent"]};
+        }}
+
+        QPushButton#iconButton[favorite="true"] {{
+            color: {t["favorite_active"]};
         }}
 
         QPushButton#dangerIconButton {{
@@ -387,13 +416,13 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QPushButton#segmentedButton:hover {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
         }}
 
         QPushButton#segmentedButton:checked {{
-            background-color: #f1f1f1;
-            color: #111111;
-            border: 1px solid transparent;
+            background-color: {t["segmented_checked_bg"]};
+            color: {t["segmented_checked_text"]};
+            border: 1px solid {t["segmented_checked_border"]};
         }}
 
         QPushButton#favoriteToggleButton {{
@@ -415,7 +444,7 @@ def get_stylesheet(dark: bool = False) -> str:
 
         QFrame#historyCard:hover,
         QFrame#snippetCard:hover {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
         }}
 
         QFrame#historyCard[selected="true"],
@@ -425,31 +454,31 @@ def get_stylesheet(dark: bool = False) -> str:
 
         QFrame#historyCard[selected="true"] QLabel,
         QFrame#snippetCard[selected="true"] QLabel {{
-            color: #ffffff;
+            color: {t["selected_text"]};
         }}
 
         QFrame#historyCard[selected="true"] QLabel#cardIcon,
         QFrame#snippetCard[selected="true"] QLabel#cardIcon {{
-            color: rgba(255, 255, 255, 0.92);
+            color: {t["selected_text"]};
         }}
 
         QFrame#historyCard[selected="true"] QLabel#cardPreview,
-        QFrame#snippetCard[selected="true"] QLabel#cardTitle,
         QFrame#snippetCard[selected="true"] QLabel#cardDescription,
-        QFrame#historyCard[selected="true"] QLabel#cardTitle,
         QFrame#historyCard[selected="true"] QLabel#cardDescription,
+        QFrame#historyCard[selected="true"] QLabel#cardSource,
+        QFrame#snippetCard[selected="true"] QLabel#cardSource,
         QFrame#historyCard[selected="true"] QLabel[role="muted"] {{
-            color: rgba(255, 255, 255, 0.78);
+            color: {t["selected_text_soft"]};
         }}
 
         QFrame#snippetCard[selected="true"] QLabel#tagPill {{
             background-color: rgba(255, 255, 255, 0.18);
-            color: #ffffff;
+            color: {t["selected_text"]};
         }}
 
         QFrame#snippetCard[selected="true"] QLabel#tagPillBlue {{
             background-color: rgba(255, 255, 255, 0.18);
-            color: #ffffff;
+            color: {t["selected_text"]};
         }}
 
         QFrame#detailPane QScrollArea {{
@@ -530,7 +559,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QTabBar#settingsTabBar::tab:hover:!selected {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
         }}
 
         QScrollArea#settingsScrollArea {{
@@ -605,7 +634,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QPushButton#settingsSecondaryButton:hover {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
         }}
 
         QGroupBox {{
@@ -645,7 +674,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QTabBar::tab:hover:!selected {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
         }}
 
         QCheckBox {{
@@ -680,13 +709,23 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QMenu::item:selected {{
-            background-color: {t["accent_soft_2"]};
+            background-color: {t["hover"]};
         }}
 
         QMenu::separator {{
             height: 1px;
             background-color: {t["border"]};
             margin: 4px 8px;
+        }}
+
+        QLabel#favoriteBadge[favorite="true"],
+        QLabel#cardFavoriteBadge[favorite="true"] {{
+            color: {t["favorite_active"]};
+        }}
+
+        QLabel#favoriteBadge[favorite="false"],
+        QLabel#cardFavoriteBadge[favorite="false"] {{
+            color: {t["favorite_inactive"]};
         }}
 
         QToolTip {{

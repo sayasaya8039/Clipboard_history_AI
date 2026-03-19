@@ -539,6 +539,7 @@ class SnippetCard(BaseCard):
         title_row.addWidget(self._name, 1)
 
         self._favorite = QLabel(icon_glyph("favorite"))
+        self._favorite.setObjectName("cardFavoriteBadge")
         self._favorite.setFont(icon_font(10, QFont.Weight.Bold))
         title_row.addWidget(self._favorite)
 
@@ -567,7 +568,8 @@ class SnippetCard(BaseCard):
         favorite = bool(item.get("favorite"))
         self._favorite.setVisible(True)
         self._favorite.setText("★" if favorite else "☆")
-        self._favorite.setStyleSheet("color: #f59e0b;" if favorite else "color: #6f6f6f;")
+        self._favorite.setProperty("favorite", favorite)
+        _repolish(self._favorite)
 
         _clear_layout(self._tags_row)
         tags = list(item.get("tags") or [])
