@@ -691,6 +691,3 @@ class SettingsDialog(QDialog):
         index = combo.findData(value)
         if index >= 0:
             combo.setCurrentIndex(index)
-
-    def get_theme_setting(self) -> str:
-        return get_setting("theme", _DEFAULTS["theme"]) or _DEFAULTS["theme"]
