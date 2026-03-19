@@ -488,6 +488,126 @@ def get_stylesheet(dark: bool = False) -> str:
             background: transparent;
         }}
 
+        QDialog#settingsDialog {{
+            background-color: {t["surface"]};
+            border: 1px solid {t["border"]};
+            border-radius: 18px;
+        }}
+
+        QLabel#settingsDialogTitle {{
+            color: {t["text"]};
+            font-size: 15px;
+            font-weight: 600;
+        }}
+
+        QTabWidget#settingsTabs::pane {{
+            border: none;
+            background: transparent;
+            margin-top: 12px;
+        }}
+
+        QTabBar#settingsTabBar {{
+            background: {t["panel"]};
+            border: 1px solid {t["border"]};
+            border-radius: 10px;
+            padding: 3px;
+        }}
+
+        QTabBar#settingsTabBar::tab {{
+            background: transparent;
+            color: {t["text_soft"]};
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin: 0 2px 0 0;
+            min-width: 88px;
+        }}
+
+        QTabBar#settingsTabBar::tab:selected {{
+            background-color: {t["surface"]};
+            color: {t["text"]};
+            font-weight: 600;
+        }}
+
+        QTabBar#settingsTabBar::tab:hover:!selected {{
+            background-color: {t["accent_soft_2"]};
+        }}
+
+        QScrollArea#settingsScrollArea {{
+            background: transparent;
+            border: none;
+        }}
+
+        QFrame#settingsSection {{
+            background-color: {t["panel"]};
+            border: 1px solid {t["border"]};
+            border-radius: 14px;
+        }}
+
+        QFrame#settingsSeparator {{
+            background-color: {t["border"]};
+            min-height: 1px;
+            max-height: 1px;
+            border: none;
+        }}
+
+        QLabel#settingsSectionHeading {{
+            color: {t["text"]};
+            font-size: 13px;
+            font-weight: 600;
+        }}
+
+        QLabel#settingsFieldTitle,
+        QLabel#settingsRowTitle {{
+            color: {t["text"]};
+            font-size: 13px;
+            font-weight: 600;
+        }}
+
+        QLabel#settingsDescription {{
+            color: {t["text_soft"]};
+            font-size: 11px;
+        }}
+
+        QFrame#settingsShortcutRow {{
+            border-bottom: 1px solid {t["border"]};
+        }}
+
+        QLabel#shortcutKeycap {{
+            background-color: {t["panel_alt"]};
+            border: 1px solid {t["border"]};
+            border-radius: 8px;
+            color: {t["text_soft"]};
+            font-family: Consolas, "SF Mono", monospace;
+            font-size: 11px;
+            padding: 6px 10px;
+            min-width: 96px;
+        }}
+
+        QPushButton#settingsPrimaryButton {{
+            background-color: {t["accent"]};
+            color: #ffffff;
+            border-radius: 10px;
+            padding: 0 16px;
+            min-height: 34px;
+        }}
+
+        QPushButton#settingsPrimaryButton:hover {{
+            background-color: {t["accent_hover"]};
+        }}
+
+        QPushButton#settingsSecondaryButton {{
+            background-color: {t["panel"]};
+            border: 1px solid {t["border"]};
+            border-radius: 10px;
+            padding: 0 16px;
+            min-height: 34px;
+        }}
+
+        QPushButton#settingsSecondaryButton:hover {{
+            background-color: {t["accent_soft_2"]};
+        }}
+
         QGroupBox {{
             color: {t["text"]};
             border: 1px solid {t["border"]};
