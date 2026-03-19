@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import APP_NAME, RESOURCES_DIR
 from database import init_database, get_setting
 from clipboard_monitor import ClipboardMonitor
+from startup import is_startup_launch, set_launch_at_startup_enabled
 from ui.styles import get_stylesheet, is_dark_mode
 from ui.tray_icon import TrayIcon
 from ui.main_window import MainWindow
@@ -25,6 +26,8 @@ class Application:
     """アプリケーションクラス"""
 
     def __init__(self):
+        self._started_from_startup = is_startup_launch(sys.argv[1:])
+
         # QApplication作成
         self.app = QApplication(sys.argv)
         self.app.setApplicationName(APP_NAME)
@@ -35,6 +38,7 @@ class Application:
 
         # データベース初期化
         init_database()
+        self._sync_launch_at_startup_setting()
 
         # テーマ適用
         self._apply_theme()
@@ -97,6 +101,16 @@ class Application:
         self.main_window.raise_()
         self.main_window.activateWindow()
 
+    def _sync_launch_at_startup_setting(self) -> None:
+        """保存済みの自動起動設定を OS に反映する。"""
+        if get_setting("launch_at_startup_migrated", "0") != "1":
+            return
+
+        try:
+            set_launch_at_startup_enabled(get_setting("launch_at_startup", "0") == "1")
+        except OSError as exc:
+            print(f"自動起動の同期に失敗: {exc}")
+
     def _show_settings(self) -> None:
         """設定ダイアログを表示"""
         self.settings_dialog.exec()
@@ -133,13 +147,14 @@ class Application:
 
         # トレイアイコン表示
         self.tray_icon.show()
-        self.tray_icon.show_message(
-            APP_NAME,
-            "クリップボード監視を開始しました",
-        )
+        if not self._started_from_startup:
+            self.tray_icon.show_message(
+                APP_NAME,
+                "クリップボード監視を開始しました",
+            )
 
-        # メインウィンドウを起動時に表示
-        self._show_main_window()
+        if not self._started_from_startup:
+            self._show_main_window()
 
         return self.app.exec()
 

@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -23,11 +24,16 @@ from PyQt6.QtWidgets import (
 
 from config import DATABASE_PATH
 from database import get_setting, set_setting
+from startup import (
+    StartupRegistrationError,
+    is_launch_at_startup_enabled,
+    set_launch_at_startup_enabled,
+)
 
 
 _DEFAULTS: dict[str, str] = {
     "theme": "dark",
-    "launch_at_startup": "1",
+    "launch_at_startup": "0",
     "show_in_menubar": "1",
     "show_in_dock": "0",
     "language": "ja",
@@ -159,7 +165,7 @@ class SettingsDialog(QDialog):
         layout.addWidget(
             self._create_toggle_row(
                 "システム起動時に開始",
-                "Windows 起動時に自動的に Coppy を開始します。",
+                "次回の Windows サインイン時から自動的に Coppy を開始します。",
                 self._launch_toggle,
             )
         )
@@ -579,7 +585,7 @@ class SettingsDialog(QDialog):
     def _load_settings(self) -> None:
         self._set_combo_value(self._theme_combo, get_setting("theme", _DEFAULTS["theme"]))
 
-        self._launch_toggle.setChecked(_is_truthy(get_setting("launch_at_startup", _DEFAULTS["launch_at_startup"])))
+        self._launch_toggle.setChecked(self._load_launch_at_startup_setting())
         self._menubar_toggle.setChecked(_is_truthy(get_setting("show_in_menubar", _DEFAULTS["show_in_menubar"])))
         self._dock_toggle.setChecked(_is_truthy(get_setting("show_in_dock", _DEFAULTS["show_in_dock"])))
         self._set_combo_value(self._language_combo, get_setting("language", _DEFAULTS["language"]))
@@ -639,9 +645,16 @@ class SettingsDialog(QDialog):
         )
 
     def _save_settings(self) -> None:
+        try:
+            set_launch_at_startup_enabled(self._launch_toggle.isChecked())
+        except StartupRegistrationError as exc:
+            QMessageBox.warning(self, "自動起動の設定に失敗しました", str(exc))
+            return
+
         set_setting("theme", self._theme_combo.currentData())
 
         self._save_bool("launch_at_startup", self._launch_toggle)
+        set_setting("launch_at_startup_migrated", "1")
         self._save_bool("show_in_menubar", self._menubar_toggle)
         self._save_bool("show_in_dock", self._dock_toggle)
         set_setting("language", self._language_combo.currentData())
@@ -691,3 +704,12 @@ class SettingsDialog(QDialog):
         index = combo.findData(value)
         if index >= 0:
             combo.setCurrentIndex(index)
+
+    def _load_launch_at_startup_setting(self) -> bool:
+        try:
+            return is_launch_at_startup_enabled()
+        except StartupRegistrationError:
+            return _is_truthy(get_setting("launch_at_startup", _DEFAULTS["launch_at_startup"]))
+
+    def get_theme_setting(self) -> str:
+        return get_setting("theme", _DEFAULTS["theme"]) or _DEFAULTS["theme"]

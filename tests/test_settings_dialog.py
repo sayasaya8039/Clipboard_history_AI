@@ -9,6 +9,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtWidgets import QApplication, QCheckBox, QComboBox, QLineEdit, QTabWidget
 
 from database import get_setting, init_database
+from startup import StartupRegistrationError
 from ui.settings_dialog import SettingsDialog
 
 
@@ -30,13 +31,21 @@ class SettingsDialogTests(unittest.TestCase):
         self._db_patch_2.start()
         self.addCleanup(self._db_patch_2.stop)
 
+        self._startup_state_patch = patch("ui.settings_dialog.is_launch_at_startup_enabled", return_value=False)
+        self._startup_state = self._startup_state_patch.start()
+        self.addCleanup(self._startup_state_patch.stop)
+
+        self._startup_apply_patch = patch("ui.settings_dialog.set_launch_at_startup_enabled")
+        self._startup_apply = self._startup_apply_patch.start()
+        self.addCleanup(self._startup_apply_patch.stop)
+
         init_database()
 
     def test_load_settings_populates_figma_tabs_without_ai_controls(self) -> None:
+        self._startup_state.return_value = True
         self._seed_settings(
             {
                 "theme": "light",
-                "launch_at_startup": "1",
                 "show_in_dock": "1",
                 "language": "en",
                 "notification_level": "errors",
@@ -106,6 +115,8 @@ class SettingsDialogTests(unittest.TestCase):
 
         dialog._save_settings()
 
+        self._startup_apply.assert_called_once_with(True)
+        self.assertEqual(get_setting("launch_at_startup_migrated"), "1")
         self.assertIsNone(get_setting("ai_provider"))
         self.assertIsNone(get_setting("openai_api_key"))
         self.assertIsNone(get_setting("gemini_api_key"))
@@ -143,6 +154,20 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual(get_setting("max_history_items"), "200")
         self.assertEqual(get_setting("retention_days"), "0")
         self.assertEqual(get_setting("max_image_size_mb"), "10")
+
+    def test_save_settings_aborts_when_startup_registration_fails(self) -> None:
+        dialog = SettingsDialog()
+        self.addCleanup(dialog.deleteLater)
+
+        self._set_check(dialog, "launchAtStartupToggle", True)
+        self._startup_apply.side_effect = StartupRegistrationError("registry failed")
+
+        with patch("ui.settings_dialog.QMessageBox.warning") as warning:
+            dialog._save_settings()
+
+        warning.assert_called_once()
+        self.assertIsNone(get_setting("launch_at_startup"))
+        self.assertIsNone(get_setting("launch_at_startup_migrated"))
 
     def test_init_database_removes_legacy_ai_settings(self) -> None:
         self._seed_settings(
