@@ -122,7 +122,7 @@ class MainWindow(QMainWindow):
 
         self._list_host = QWidget()
         self._list_layout = QVBoxLayout(self._list_host)
-        self._list_layout.setContentsMargins(0, 0, 0, 0)
+        self._list_layout.setContentsMargins(0, 0, 8, 0)
         self._list_layout.setSpacing(10)
         self._list_layout.addStretch(1)
         self._list_scroll.setWidget(self._list_host)
