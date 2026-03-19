@@ -184,6 +184,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QLabel#searchIcon {{
+            font-family: "Segoe Fluent Icons", "Segoe UI Symbol";
             color: {t["text_dim"]};
             font-size: 12px;
         }}
@@ -248,6 +249,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QLabel#favoriteBadge {{
+            font-family: "Segoe Fluent Icons", "Segoe UI Symbol";
             color: {t["warning"]};
         }}
 
@@ -262,6 +264,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QLabel#cardIcon {{
+            font-family: "Segoe Fluent Icons", "Segoe UI Symbol";
             color: {t["text_soft"]};
             font-size: 12px;
         }}
@@ -329,6 +332,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QPushButton#iconButton {{
+            font-family: "Segoe Fluent Icons", "Segoe UI Symbol";
             background-color: transparent;
             border-radius: 8px;
             min-width: 30px;
@@ -344,6 +348,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QPushButton#dangerIconButton {{
+            font-family: "Segoe Fluent Icons", "Segoe UI Symbol";
             background-color: transparent;
             border-radius: 8px;
             min-width: 30px;
@@ -360,6 +365,7 @@ def get_stylesheet(dark: bool = False) -> str:
         }}
 
         QPushButton#segmentedButton {{
+            font-family: "Segoe Fluent Icons", "Segoe UI Symbol", "Segoe UI", "Yu Gothic UI", "Hiragino Sans", "Meiryo", sans-serif;
             background-color: transparent;
             border-radius: 999px;
             padding: 0 16px;
@@ -376,6 +382,10 @@ def get_stylesheet(dark: bool = False) -> str:
             background-color: #f1f1f1;
             color: #111111;
             border: 1px solid transparent;
+        }}
+
+        QPushButton#favoriteToggleButton {{
+            font-family: "Segoe Fluent Icons", "Segoe UI Symbol", "Segoe UI", "Yu Gothic UI", "Hiragino Sans", "Meiryo", sans-serif;
         }}
 
         QFrame#tabSwitcher {{

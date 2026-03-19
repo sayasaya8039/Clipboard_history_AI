@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from ui.iconography import icon_font, icon_glyph
 from ui.sample_data import format_japanese_datetime
 from ui.widgets import _clear_layout, _make_button, _make_glyph_font
 
@@ -69,15 +70,15 @@ class HistoryDetailPanel(QFrame):
         actions = QHBoxLayout()
         actions.setSpacing(8)
 
-        self._pin_button = _make_button("⌖", "ピン", object_name="iconButton", fixed_size=(30, 30))
+        self._pin_button = _make_button(icon_glyph("pin"), "ピン", object_name="iconButton", fixed_size=(30, 30))
         self._pin_button.clicked.connect(self.pin_requested.emit)
         actions.addWidget(self._pin_button)
 
-        self._copy_button = _make_button("⧉", "コピー", object_name="iconButton", fixed_size=(30, 30))
+        self._copy_button = _make_button(icon_glyph("copy"), "コピー", object_name="iconButton", fixed_size=(30, 30))
         self._copy_button.clicked.connect(self.copy_requested.emit)
         actions.addWidget(self._copy_button)
 
-        self._delete_button = _make_button("⌦", "削除", object_name="dangerIconButton", fixed_size=(30, 30))
+        self._delete_button = _make_button(icon_glyph("delete"), "削除", object_name="dangerIconButton", fixed_size=(30, 30))
         self._delete_button.clicked.connect(self.delete_requested.emit)
         actions.addWidget(self._delete_button)
 
@@ -140,7 +141,7 @@ class HistoryDetailPanel(QFrame):
         self._delete_button.setEnabled(enabled)
 
     def _update_pin_button(self, pinned: bool) -> None:
-        self._pin_button.setText("⏼" if pinned else "⌖")
+        self._pin_button.setText(icon_glyph("pinned" if pinned else "pin"))
         self._pin_button.setStyleSheet("color: #2d7ff9;" if pinned else "color: #f3f3f3;")
 
     def _empty_widget(self, text: str) -> QWidget:
@@ -248,9 +249,9 @@ class SnippetDetailPanel(QFrame):
         self._name_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         title_box.addWidget(self._name_label, 1)
 
-        self._favorite_badge = QLabel("★")
+        self._favorite_badge = QLabel(icon_glyph("favorite"))
         self._favorite_badge.setObjectName("favoriteBadge")
-        self._favorite_badge.setFont(_make_glyph_font(11, QFont.Weight.Bold))
+        self._favorite_badge.setFont(icon_font(11, QFont.Weight.Bold))
         title_box.addWidget(self._favorite_badge)
 
         title_box.addStretch(1)
@@ -259,19 +260,19 @@ class SnippetDetailPanel(QFrame):
         actions = QHBoxLayout()
         actions.setSpacing(8)
 
-        self._favorite_button = _make_button("★", "お気に入り", object_name="iconButton", fixed_size=(30, 30))
+        self._favorite_button = _make_button(icon_glyph("favorite"), "お気に入り", object_name="iconButton", fixed_size=(30, 30))
         self._favorite_button.clicked.connect(self.favorite_requested.emit)
         actions.addWidget(self._favorite_button)
 
-        self._edit_button = _make_button("✎", "編集", object_name="iconButton", fixed_size=(30, 30))
+        self._edit_button = _make_button(icon_glyph("edit"), "編集", object_name="iconButton", fixed_size=(30, 30))
         self._edit_button.clicked.connect(self.edit_requested.emit)
         actions.addWidget(self._edit_button)
 
-        self._copy_button = _make_button("⧉", "コピー", object_name="iconButton", fixed_size=(30, 30))
+        self._copy_button = _make_button(icon_glyph("copy"), "コピー", object_name="iconButton", fixed_size=(30, 30))
         self._copy_button.clicked.connect(self.copy_requested.emit)
         actions.addWidget(self._copy_button)
 
-        self._delete_button = _make_button("⌦", "削除", object_name="dangerIconButton", fixed_size=(30, 30))
+        self._delete_button = _make_button(icon_glyph("delete"), "削除", object_name="dangerIconButton", fixed_size=(30, 30))
         self._delete_button.clicked.connect(self.delete_requested.emit)
         actions.addWidget(self._delete_button)
 
@@ -343,9 +344,9 @@ class SnippetDetailPanel(QFrame):
 
         favorite = bool(item.get("favorite"))
         self._favorite_badge.setVisible(True)
-        self._favorite_badge.setText("★" if favorite else "☆")
+        self._favorite_badge.setText(icon_glyph("favorite_fill" if favorite else "favorite"))
         self._favorite_badge.setStyleSheet("color: #f59e0b;" if favorite else "color: #6f6f6f;")
-        self._favorite_button.setText("★" if favorite else "☆")
+        self._favorite_button.setText(icon_glyph("favorite_fill" if favorite else "favorite"))
 
         self._toggle_controls(True)
         self._set_tags(tags)

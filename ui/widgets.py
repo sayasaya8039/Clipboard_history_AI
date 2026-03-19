@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from config import RESOURCES_DIR
+from ui.iconography import icon_font, icon_glyph
 from ui.sample_data import format_relative_time, normalize_preview
 
 
@@ -52,7 +53,7 @@ def _make_button(
     button.setCheckable(checkable)
     button.setChecked(checked)
     button.setCursor(Qt.CursorShape.PointingHandCursor)
-    button.setFont(_make_glyph_font(11))
+    button.setFont(icon_font(11))
     if fixed_size:
         button.setFixedSize(*fixed_size)
     return button
@@ -144,11 +145,11 @@ class TitleBarWidget(QWidget):
         layout.addLayout(title_block)
         layout.addStretch(1)
 
-        new_button = _make_button("＋ 新規", "新しいアイテムを追加", fixed_size=(96, 30))
+        new_button = _make_button(f"{icon_glyph('add')} 新規", "新しいアイテムを追加", fixed_size=(96, 30))
         new_button.clicked.connect(self.new_requested.emit)
         layout.addWidget(new_button)
 
-        settings_button = _make_button("⚙", "設定", object_name="iconButton", fixed_size=(30, 30))
+        settings_button = _make_button(icon_glyph("settings"), "設定", object_name="iconButton", fixed_size=(30, 30))
         settings_button.clicked.connect(self.settings_requested.emit)
         layout.addWidget(settings_button)
 
@@ -210,12 +211,12 @@ class SegmentedTabs(QWidget):
         group.setExclusive(True)
         self._buttons: dict[str, QPushButton] = {}
 
-        for key, text in (("history", "◷ 履歴"), ("snippets", "▣ 定型文")):
+        for key, text in (("history", f"{icon_glyph('clock')} 履歴"), ("snippets", f"{icon_glyph('list')} 定型文")):
             button = QPushButton(text)
             button.setObjectName("segmentedButton")
             button.setCheckable(True)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
-            button.setFont(_make_glyph_font(10))
+            button.setFont(icon_font(10))
             button.clicked.connect(lambda checked=False, tab=key: self.set_active(tab))
             group.addButton(button)
             self._buttons[key] = button
@@ -256,9 +257,9 @@ class SearchField(QFrame):
         layout.setContentsMargins(12, 0, 12, 0)
         layout.setSpacing(8)
 
-        icon = QLabel("⌕")
+        icon = QLabel(icon_glyph("search"))
         icon.setObjectName("searchIcon")
-        icon.setFont(_make_glyph_font(12))
+        icon.setFont(icon_font(12))
         layout.addWidget(icon)
 
         self._line_edit = QLineEdit()
@@ -387,7 +388,7 @@ class HistoryCard(BaseCard):
         self._icon = QLabel()
         self._icon.setObjectName("cardIcon")
         self._icon.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
-        self._icon.setFont(_make_glyph_font(12, QFont.Weight.DemiBold))
+        self._icon.setFont(icon_font(12, QFont.Weight.DemiBold))
         self._icon.setFixedWidth(24)
         layout.addWidget(self._icon)
 
@@ -433,10 +434,15 @@ class HistoryCard(BaseCard):
     @staticmethod
     def _glyph_for_type(content_type: str) -> str:
         return {
-            "code": "<>",
-            "html": "</>",
-            "image": "▣",
-        }.get(content_type, "⧉")
+            "code": icon_glyph("code"),
+            "html": icon_glyph("code"),
+            "image": icon_glyph("picture"),
+            "url": icon_glyph("link"),
+            "email": icon_glyph("mail"),
+            "phone": icon_glyph("phone"),
+            "filepath": icon_glyph("page"),
+            "text": icon_glyph("page"),
+        }.get(content_type, icon_glyph("page"))
 
 
 class SnippetCard(BaseCard):
@@ -454,10 +460,10 @@ class SnippetCard(BaseCard):
         layout.setContentsMargins(16, 14, 16, 14)
         layout.setSpacing(12)
 
-        self._icon = QLabel("▣")
+        self._icon = QLabel(icon_glyph("page"))
         self._icon.setObjectName("cardIcon")
         self._icon.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter)
-        self._icon.setFont(_make_glyph_font(12, QFont.Weight.DemiBold))
+        self._icon.setFont(icon_font(12, QFont.Weight.DemiBold))
         self._icon.setFixedWidth(24)
         layout.addWidget(self._icon)
 
@@ -473,8 +479,8 @@ class SnippetCard(BaseCard):
         self._name.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         title_row.addWidget(self._name, 1)
 
-        self._favorite = QLabel("★")
-        self._favorite.setFont(_make_glyph_font(10, QFont.Weight.Bold))
+        self._favorite = QLabel(icon_glyph("favorite"))
+        self._favorite.setFont(icon_font(10, QFont.Weight.Bold))
         title_row.addWidget(self._favorite)
 
         content.addLayout(title_row)

@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -17,6 +18,8 @@ from PyQt6.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
 )
+
+from ui.iconography import icon_font, icon_glyph
 
 
 class NewItemDialog(QDialog):
@@ -162,6 +165,7 @@ class NewSnippetDialog(QDialog):
         self._favorite_button.setCheckable(True)
         self._favorite_button.setObjectName("favoriteToggleButton")
         self._favorite_button.toggled.connect(self._sync_favorite_button)
+        self._favorite_button.setFont(icon_font(11, QFont.Weight.Normal))
         favorite_row = QHBoxLayout()
         favorite_row.addWidget(self._favorite_button)
         favorite_row.addStretch(1)
@@ -195,7 +199,9 @@ class NewSnippetDialog(QDialog):
         self._favorite_button.setChecked(bool(self._snippet.get("favorite", False)))
 
     def _sync_favorite_button(self, checked: bool) -> None:
-        self._favorite_button.setText("★ お気に入り" if checked else "☆ お気に入り")
+        self._favorite_button.setText(
+            f"{icon_glyph('favorite_fill' if checked else 'favorite')} お気に入り"
+        )
 
     def _accept_form(self) -> None:
         name = self._name_input.text().strip()
