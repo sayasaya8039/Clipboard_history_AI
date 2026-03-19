@@ -526,6 +526,7 @@ class MainWindow(QMainWindow):
         super().showEvent(event)
         self._refresh_visible_content()
         self._update_window_mask()
+        self._update_sidebar_mask()
         if not self._has_centered_once:
             self._center_on_screen()
             self._has_centered_once = True
@@ -533,6 +534,7 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._update_window_mask()
+        self._update_sidebar_mask()
 
     def _center_on_screen(self) -> None:
         screen = self.screen()
@@ -554,6 +556,21 @@ class MainWindow(QMainWindow):
         path = QPainterPath()
         path.addRoundedRect(QRectF(self.rect()), self._corner_radius, self._corner_radius)
         self.setMask(QRegion(path.toFillPolygon().toPolygon()))
+
+    def _update_sidebar_mask(self) -> None:
+        if self._sidebar.width() <= 0 or self._sidebar.height() <= 0:
+            return
+
+        radius = 20
+        rect = QRectF(self._sidebar.rect())
+        path = QPainterPath()
+        path.addRoundedRect(rect, radius, radius)
+
+        # 左側の角だけは直角に保ち、右側だけを丸める。
+        left_strip = QPainterPath()
+        left_strip.addRect(QRectF(rect.left(), rect.top(), radius, rect.height()))
+        masked = path.united(left_strip)
+        self._sidebar.setMask(QRegion(masked.toFillPolygon().toPolygon()))
 
     def toggle_maximize(self) -> None:
         if self.isMaximized():
