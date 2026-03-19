@@ -172,6 +172,20 @@ class SettingsDialogTests(unittest.TestCase):
         self.assertEqual(get_setting("show_app_names"), "0")
         self.assertEqual(get_setting("show_type_icons"), "1")
 
+    def test_save_settings_normalizes_invalid_numeric_values(self) -> None:
+        dialog = SettingsDialog()
+        self.addCleanup(dialog.deleteLater)
+
+        self._set_text(dialog, "maxHistoryItemsInput", "abc")
+        self._set_text(dialog, "retentionDaysInput", "-10")
+        self._set_text(dialog, "maxImageSizeInput", "12mb")
+
+        dialog._save_settings()
+
+        self.assertEqual(get_setting("max_history_items"), "200")
+        self.assertEqual(get_setting("retention_days"), "0")
+        self.assertEqual(get_setting("max_image_size_mb"), "10")
+
     def _seed_settings(self, values: dict[str, str]) -> None:
         from database import set_setting
 

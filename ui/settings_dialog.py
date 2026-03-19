@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Optional
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QPainter, QPaintEvent
+from PyQt6.QtGui import QColor, QIntValidator, QPainter, QPaintEvent
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -64,6 +64,11 @@ _DEFAULTS: dict[str, str] = {
 
 def _is_truthy(value: Optional[str]) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _normalize_non_negative_int(value: str, default: str) -> str:
+    stripped = (value or "").strip()
+    return stripped if stripped.isdigit() else default
 
 
 class SwitchToggle(QCheckBox):
@@ -223,10 +228,10 @@ class SettingsDialog(QDialog):
     def _build_history_tab(self) -> None:
         page, layout = self._create_tab_page("履歴")
 
-        self._max_history_input = self._create_line_edit("maxHistoryItemsInput", "200")
+        self._max_history_input = self._create_number_edit("maxHistoryItemsInput", "200")
         layout.addWidget(self._create_field_block("最大保存アイテム数", "履歴に保持する件数。0 で無制限。", self._max_history_input))
 
-        self._retention_days_input = self._create_line_edit("retentionDaysInput", "0")
+        self._retention_days_input = self._create_number_edit("retentionDaysInput", "0")
         layout.addWidget(self._create_field_block("保存期間（日）", "指定日数を超えたアイテムを自動削除。0 で無期限。", self._retention_days_input))
 
         layout.addWidget(self._create_separator())
@@ -263,7 +268,7 @@ class SettingsDialog(QDialog):
 
         layout.addWidget(self._create_separator())
 
-        self._max_image_size_input = self._create_line_edit("maxImageSizeInput", "10")
+        self._max_image_size_input = self._create_number_edit("maxImageSizeInput", "10")
         layout.addWidget(self._create_field_block("最大画像サイズ（MB）", "保存する画像の最大サイズ。0 で無制限。", self._max_image_size_input))
 
         layout.addWidget(self._create_separator())
@@ -415,6 +420,11 @@ class SettingsDialog(QDialog):
         line_edit.setPlaceholderText(placeholder)
         return line_edit
 
+    def _create_number_edit(self, object_name: str, placeholder: str) -> QLineEdit:
+        line_edit = self._create_line_edit(object_name, placeholder)
+        line_edit.setValidator(QIntValidator(0, 999999, line_edit))
+        return line_edit
+
     def _create_field_block(self, title: str, description: str, field: QWidget) -> QFrame:
         block = QFrame()
         block.setObjectName("settingsFieldBlock")
@@ -562,8 +572,14 @@ class SettingsDialog(QDialog):
         self._save_bool("monitor_clipboard", self._monitor_toggle)
         self._save_bool("confirm_before_delete", self._confirm_delete_toggle)
 
-        set_setting("max_history_items", self._max_history_input.text().strip() or _DEFAULTS["max_history_items"])
-        set_setting("retention_days", self._retention_days_input.text().strip() or _DEFAULTS["retention_days"])
+        set_setting(
+            "max_history_items",
+            _normalize_non_negative_int(self._max_history_input.text(), _DEFAULTS["max_history_items"]),
+        )
+        set_setting(
+            "retention_days",
+            _normalize_non_negative_int(self._retention_days_input.text(), _DEFAULTS["retention_days"]),
+        )
         self._save_bool("save_history_on_exit", self._save_history_toggle)
         self._save_bool("restore_history_on_launch", self._restore_history_toggle)
         set_setting("database_path", self._database_path_input.text().strip() or _DEFAULTS["database_path"])
@@ -572,7 +588,10 @@ class SettingsDialog(QDialog):
         self._save_bool("save_html", self._save_html_toggle)
         self._save_bool("save_images", self._save_images_toggle)
         self._save_bool("save_files", self._save_files_toggle)
-        set_setting("max_image_size_mb", self._max_image_size_input.text().strip() or _DEFAULTS["max_image_size_mb"])
+        set_setting(
+            "max_image_size_mb",
+            _normalize_non_negative_int(self._max_image_size_input.text(), _DEFAULTS["max_image_size_mb"]),
+        )
         self._save_bool("exclude_duplicates", self._exclude_duplicates_toggle)
         self._save_bool("exclude_empty_items", self._exclude_empty_toggle)
         self._save_bool("exclude_password_manager", self._exclude_passwords_toggle)
