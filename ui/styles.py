@@ -269,6 +269,11 @@ def get_stylesheet(dark: bool = False) -> str:
             font-size: 12px;
         }}
 
+        QLabel#cardSource {{
+            color: {t["text_soft"]};
+            font-size: 10px;
+        }}
+
         QLabel#cardPreview,
         QLabel#cardTitle {{
             color: {t["text"]};
@@ -367,7 +372,7 @@ def get_stylesheet(dark: bool = False) -> str:
         QPushButton#segmentedButton {{
             font-family: "Segoe Fluent Icons", "Segoe UI Symbol", "Segoe UI", "Yu Gothic UI", "Hiragino Sans", "Meiryo", sans-serif;
             background-color: transparent;
-            border-radius: 999px;
+            border-radius: 14px;
             padding: 0 16px;
             min-height: 36px;
             color: {t["text_soft"]};
@@ -391,8 +396,8 @@ def get_stylesheet(dark: bool = False) -> str:
         QFrame#tabSwitcher {{
             background-color: {t["panel"]};
             border: 1px solid {t["border"]};
-            border-radius: 18px;
-            padding: 2px;
+            border-radius: 20px;
+            padding: 3px;
         }}
 
         QFrame#historyCard,

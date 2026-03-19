@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 from PyQt6.QtCore import QPoint, Qt, pyqtSignal
 from PyQt6.QtCore import QTimer
@@ -301,6 +303,12 @@ class ClampedTextLabel(QLabel):
             self._refresh_scheduled = True
             QTimer.singleShot(0, self._apply_pending_refresh)
 
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        if not self._refresh_scheduled:
+            self._refresh_scheduled = True
+            QTimer.singleShot(0, self._apply_pending_refresh)
+
     def _apply_pending_refresh(self) -> None:
         self._refresh_scheduled = False
         self._refresh_text()
@@ -309,6 +317,9 @@ class ClampedTextLabel(QLabel):
         if not self._raw_text:
             if self.text():
                 super().setText("")
+            if self.height() != 0:
+                self.setFixedHeight(0)
+            self.updateGeometry()
             return
 
         available_width = max(1, self.contentsRect().width())
@@ -317,6 +328,10 @@ class ClampedTextLabel(QLabel):
         display_text = "\n".join(lines)
         if display_text != self.text():
             super().setText(display_text)
+        target_height = metrics.lineSpacing() * min(len(lines), self._max_lines)
+        if self.height() != target_height:
+            self.setFixedHeight(target_height)
+        self.updateGeometry()
 
     def _layout_lines(self, text: str, width: int, metrics: QFontMetrics) -> list[str]:
         layout = QTextLayout(text, self.font())
@@ -411,10 +426,10 @@ class HistoryCard(BaseCard):
         self._bullet.setProperty("role", "muted")
         meta.addWidget(self._bullet)
 
-        self._app = QLabel()
-        self._app.setProperty("role", "muted")
-        self._app.setFont(_make_glyph_font(10))
-        meta.addWidget(self._app)
+        self._source = QLabel()
+        self._source.setObjectName("cardSource")
+        self._source.setProperty("role", "muted")
+        meta.addWidget(self._source)
 
         meta.addStretch(1)
         content.addLayout(meta)
@@ -427,9 +442,10 @@ class HistoryCard(BaseCard):
         self._icon.setText(self._glyph_for_type(content_type))
         self._preview.setText(str(item.get("preview") or normalize_preview(str(item.get("content", "")))))
         self._time.setText(format_relative_time(item.get("created_at") or datetime.now()))
-        app = str(item.get("app") or "").strip()
-        self._app.setText(app if app else "")
-        self._bullet.setVisible(bool(app))
+        source = self._source_label_for_item(item)
+        self._source.setText(source)
+        self._source.setVisible(bool(source))
+        self._bullet.setVisible(bool(source))
 
     @staticmethod
     def _glyph_for_type(content_type: str) -> str:
@@ -443,6 +459,39 @@ class HistoryCard(BaseCard):
             "filepath": icon_glyph("page"),
             "text": icon_glyph("page"),
         }.get(content_type, icon_glyph("page"))
+
+    @staticmethod
+    def _source_label_for_item(item: dict[str, Any]) -> str:
+        source = str(item.get("app") or item.get("source") or "").strip()
+        if source:
+            return source
+
+        content = str(item.get("content") or "").strip()
+        content_type = str(item.get("content_type") or item.get("type") or "").lower()
+        category = str(item.get("category") or "").lower()
+
+        if content_type == "image" or category == "image":
+            return "画像"
+        if content_type in {"code", "html"} or category == "code":
+            return "Code"
+        if content_type == "email" or "@" in content:
+            return "Mail"
+        if content_type == "phone":
+            return "Phone"
+        if content.startswith(("http://", "https://")):
+            host = urlparse(content).netloc.lower()
+            if host.startswith("www."):
+                host = host[4:]
+            return host or "URL"
+        if content.startswith("file:///"):
+            local_path = Path(content[8:])
+            return local_path.name or local_path.parent.name or "File"
+        if any(sep in content for sep in ("\\", "/")):
+            local_path = Path(content.replace("file:///", ""))
+            return local_path.name or local_path.parent.name or "File"
+        if content.lower().startswith(("python ", "npm ", "cargo ", "git ", "select ", "insert ", "update ", "delete ")):
+            return "Terminal"
+        return category.capitalize() if category and category != "text" else ""
 
 
 class SnippetCard(BaseCard):

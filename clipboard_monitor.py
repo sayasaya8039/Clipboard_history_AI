@@ -1,5 +1,7 @@
 """クリップボード監視モジュール"""
+import ctypes
 import hashlib
+import sys
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -9,8 +11,8 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer, QBuffer, QIODevice
 from PyQt6.QtGui import QClipboard, QImage
 from PyQt6.QtWidgets import QApplication
 
-from config import IMAGES_DIR, AI_PROVIDER
-from database import add_history, check_hash_exists
+from config import IMAGES_DIR
+from database import add_history, check_hash_exists, get_setting
 from categorizer import categorize, is_image_file, extract_file_path
 
 
@@ -25,7 +27,7 @@ class ClipboardMonitor(QObject):
         self._clipboard: Optional[QClipboard] = None
         self._last_hash: Optional[str] = None
         self._monitoring = False
-        self._use_ai = AI_PROVIDER != "none"
+        self._use_ai = get_setting("ai_provider", "none") != "none"
 
         # タイマーベースの監視（クリップボードシグナルが不安定な場合のフォールバック）
         self._timer = QTimer(self)
@@ -95,6 +97,78 @@ class ClipboardMonitor(QObject):
             if text and text.strip():
                 self._process_text(text)
 
+    def _get_source_app_name(self) -> Optional[str]:
+        """現在のフォアグラウンドアプリ名を取得する。"""
+        if sys.platform != "win32":
+            return None
+
+        try:
+            hwnd = ctypes.windll.user32.GetForegroundWindow()
+            if not hwnd:
+                return None
+
+            pid = ctypes.c_ulong()
+            ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if not pid.value:
+                return None
+
+            process = self._open_process(pid.value)
+            if not process:
+                return None
+
+            try:
+                return self._friendly_app_name(self._process_name_from_handle(process))
+            finally:
+                ctypes.windll.kernel32.CloseHandle(process)
+        except Exception:
+            return None
+
+    def _open_process(self, pid: int):
+        """プロセスハンドルを開く。"""
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        return ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+
+    def _process_name_from_handle(self, handle) -> str:
+        """プロセスハンドルから実行ファイル名を取得する。"""
+        buffer = ctypes.create_unicode_buffer(260)
+        size = ctypes.c_ulong(len(buffer))
+        if not ctypes.windll.kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size)):
+            return ""
+        return Path(buffer.value).stem
+
+    @staticmethod
+    def _friendly_app_name(process_name: str) -> Optional[str]:
+        """実行ファイル名を人間向けのアプリ名に変換する。"""
+        name = process_name.strip()
+        if not name:
+            return None
+
+        key = name.replace("_", " ").replace("-", " ").lower()
+        aliases = {
+            "chrome": "Chrome",
+            "msedge": "Edge",
+            "microsoft edge": "Edge",
+            "edge": "Edge",
+            "code": "VS Code",
+            "visual studio code": "VS Code",
+            "devenv": "Visual Studio",
+            "explorer": "Explorer",
+            "notepad": "Notepad",
+            "notepad++": "Notepad++",
+            "powershell": "PowerShell",
+            "windows terminal": "Windows Terminal",
+            "firefox": "Firefox",
+            "outlook": "Outlook",
+            "mail": "Mail",
+            "teams": "Teams",
+            "slack": "Slack",
+            "datagrip": "DataGrip",
+            "datagrip64": "DataGrip",
+            "python": "python",
+            "pythonw": "python",
+        }
+        return aliases.get(key, name)
+
     def _process_text(self, text: str) -> None:
         """テキストを処理"""
         text = text.strip()
@@ -115,6 +189,7 @@ class ClipboardMonitor(QObject):
 
         # カテゴリ分類
         category = categorize(text, use_ai=self._use_ai)
+        source_app = self._get_source_app_name()
 
         # 画像ファイルパスの場合は特別処理
         if category == "image" and is_image_file(text):
@@ -131,6 +206,7 @@ class ClipboardMonitor(QObject):
                     image_path=file_path,
                     content_hash=content_hash,
                     category="image",
+                    app=source_app,
                 )
             else:
                 # ファイルが存在しない場合はURLとして保存
@@ -139,6 +215,7 @@ class ClipboardMonitor(QObject):
                     content=text,
                     content_hash=content_hash,
                     category="url",
+                    app=source_app,
                 )
         else:
             # 通常のテキスト保存
@@ -147,6 +224,7 @@ class ClipboardMonitor(QObject):
                 content=text,
                 content_hash=content_hash,
                 category=category,
+                app=source_app,
             )
 
         if history_id:
@@ -183,6 +261,7 @@ class ClipboardMonitor(QObject):
             image_path=str(image_path),
             content_hash=content_hash,
             category="image",
+            app=self._get_source_app_name(),
         )
 
         if history_id:

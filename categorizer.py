@@ -121,9 +121,9 @@ def categorize(
     """テキストをカテゴリ分類"""
     # まずルールベースで判定
     rule_category = categorize_text_rule_based(text)
+    ai_provider = get_setting("ai_provider", "none")
 
     # AI分類が有効でない場合、またはルールで明確に判定できた場合
-    ai_provider = get_setting("ai_provider", "none")
     if not use_ai or ai_provider == "none":
         return rule_category
 

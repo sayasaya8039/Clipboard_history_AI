@@ -31,6 +31,7 @@ def init_database() -> None:
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    _ensure_column(cursor, "clipboard_history", "app", "TEXT")
 
     # インデックス作成
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_category ON clipboard_history(category)")
@@ -50,12 +51,21 @@ def init_database() -> None:
     conn.close()
 
 
+def _ensure_column(cursor: sqlite3.Cursor, table: str, column: str, column_type: str) -> None:
+    """テーブルに列がなければ追加する。"""
+    cursor.execute(f"PRAGMA table_info({table})")
+    columns = {row[1] for row in cursor.fetchall()}
+    if column not in columns:
+        cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column} {column_type}")
+
+
 def add_history(
     content_type: str,
     content_hash: str,
     category: str,
     content: Optional[str] = None,
     image_path: Optional[str] = None,
+    app: Optional[str] = None,
 ) -> Optional[int]:
     """履歴を追加（重複時はNoneを返す）"""
     conn = get_connection()
@@ -64,10 +74,10 @@ def add_history(
     try:
         cursor.execute(
             """
-            INSERT INTO clipboard_history (content_type, content, image_path, content_hash, category)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO clipboard_history (content_type, content, image_path, content_hash, category, app)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (content_type, content, image_path, content_hash, category),
+            (content_type, content, image_path, content_hash, category, app),
         )
         conn.commit()
         return cursor.lastrowid
@@ -126,29 +136,26 @@ def get_history_by_id(history_id: int) -> Optional[dict]:
 
 
 def delete_history(history_id: int) -> bool:
-    """履歴を削除（関連する画像ファイルも削除）"""
+    """履歴を削除"""
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 画像パスを取得
     cursor.execute("SELECT image_path FROM clipboard_history WHERE id = ?", (history_id,))
     row = cursor.fetchone()
     image_path = row["image_path"] if row else None
 
-    # 履歴を削除
     cursor.execute("DELETE FROM clipboard_history WHERE id = ?", (history_id,))
     affected = cursor.rowcount
     conn.commit()
     conn.close()
 
-    # 画像ファイルを削除
     if affected > 0 and image_path:
         try:
             path = Path(image_path)
             if path.exists():
                 path.unlink()
         except Exception:
-            pass  # ファイル削除に失敗しても処理は続行
+            pass
 
     return affected > 0
 
@@ -170,28 +177,25 @@ def toggle_favorite(history_id: int) -> bool:
 
 
 def clear_all_history() -> int:
-    """全履歴を削除（お気に入り以外、関連する画像ファイルも削除）"""
+    """全履歴を削除（お気に入り以外）"""
     conn = get_connection()
     cursor = conn.cursor()
 
-    # 削除対象の画像パスを取得
     cursor.execute("SELECT image_path FROM clipboard_history WHERE is_favorite = FALSE AND image_path IS NOT NULL")
     image_paths = [row["image_path"] for row in cursor.fetchall()]
 
-    # 履歴を削除
     cursor.execute("DELETE FROM clipboard_history WHERE is_favorite = FALSE")
     affected = cursor.rowcount
     conn.commit()
     conn.close()
 
-    # 画像ファイルを削除
     for image_path in image_paths:
         try:
             path = Path(image_path)
             if path.exists():
                 path.unlink()
         except Exception:
-            pass  # ファイル削除に失敗しても処理は続行
+            pass
 
     return affected
 

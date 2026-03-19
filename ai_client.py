@@ -93,10 +93,11 @@ def categorize_with_gemini(text: str) -> Optional[str]:
 
 def categorize_with_ai(text: str) -> Optional[str]:
     """設定されたAIプロバイダーでカテゴリ分類"""
-    ai_provider = get_setting("ai_provider", "none")
-    if ai_provider == "openai":
+    provider = get_setting("ai_provider", "none")
+
+    if provider == "openai":
         return categorize_with_openai(text)
-    elif ai_provider == "gemini":
+    elif provider == "gemini":
         return categorize_with_gemini(text)
 
     return None
