@@ -1,9 +1,14 @@
-# Clipboard History
+# Coppy - Clipboard History
+
+<p align="center">
+  <img src="resources/icon.png" alt="Coppy" width="128" height="128">
+</p>
 
 コピーした内容を自動でカテゴリ分けして保存する Windows アプリです。
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.4+-green.svg)
+![Version](https://img.shields.io/badge/Version-1.1.1-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ## 概要
@@ -31,7 +36,7 @@
   - UTF-8 / Shift_JIS 対応
   - 定型文をすべてクリア後に取り込むオプション
 - 永続保存
-  - 設定 / 履歴 / 定型文を `%APPDATA%\\Coppy` 配下に保存
+  - 設定 / 履歴 / 定型文を `%APPDATA%\Coppy` 配下に保存
 - UI
   - システムトレイ常駐
   - ダーク / ライト / システムテーマ
@@ -52,12 +57,22 @@ cd Clipboard_history_AI
 pip install -r requirements.txt
 ```
 
+### ビルド（EXE 生成）
+
+```bash
+python -m PyInstaller ClipboardHistory.spec --noconfirm
+```
+
+`dist/coppy.exe` が生成されます。
+
 ## 使い方
 
 ### 起動
 
 ```bash
 python main.py
+# または
+dist/coppy.exe
 ```
 
 起動するとシステムトレイにアイコンが表示されます。
@@ -88,18 +103,30 @@ python main.py
 ## プロジェクト構造
 
 ```text
-Clipboard_history_AI/
+Coppy/
 ├── main.py                 # エントリーポイント
 ├── config.py               # 設定管理
 ├── database.py             # SQLite 操作
 ├── csv_transfer.py         # 履歴 / 定型文の CSV 出力・取込
 ├── categorizer.py          # ルールベース分類
 ├── clipboard_monitor.py    # クリップボード監視
+├── startup.py              # Windows スタートアップ登録
+├── create_icon.py          # アイコン生成スクリプト
 ├── ui/
 │   ├── main_window.py      # メインウィンドウ
+│   ├── detail_panels.py    # 詳細パネル
+│   ├── dialogs.py          # ダイアログ
+│   ├── iconography.py      # アイコンフォント
 │   ├── settings_dialog.py  # 設定ダイアログ
 │   ├── tray_icon.py        # システムトレイ
-│   └── styles.py           # テーマ / スタイル
+│   ├── widgets.py          # 共通ウィジェット
+│   ├── styles.py           # テーマ / スタイル
+│   └── sample_data.py      # サンプルデータ
+├── resources/
+│   ├── icon.ico            # アプリアイコン (ICO)
+│   └── icon.png            # アプリアイコン (PNG)
+├── tests/                  # テスト
+├── ClipboardHistory.spec   # PyInstaller ビルド設定
 ├── requirements.txt
 └── README.md
 ```
@@ -109,6 +136,7 @@ Clipboard_history_AI/
 - 言語: Python 3.10+
 - GUI: PyQt6
 - データベース: SQLite
+- ビルド: PyInstaller
 
 ## ライセンス
 
