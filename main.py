@@ -6,15 +6,19 @@
 import sys
 from pathlib import Path
 
+from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QFont, QIcon
 from PyQt6.QtWidgets import QApplication
 
 # アプリケーションディレクトリをパスに追加
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import APP_NAME, RESOURCES_DIR
+from datetime import datetime
+
+from config import APP_NAME, RESOURCES_DIR, STORAGE_DIR
 from database import init_database, get_setting
 from clipboard_monitor import ClipboardMonitor
+from foreground_tracker import ForegroundTracker, activate_window, window_title
 from startup import is_startup_launch, set_launch_at_startup_enabled
 from ui.styles import get_stylesheet, is_dark_mode
 from ui.tray_icon import TrayIcon
@@ -51,6 +55,9 @@ class Application:
 
     def _init_components(self) -> None:
         """コンポーネントを初期化"""
+        # 前面ウィンドウ追跡（貼り付け時にフォーカス復元するため）
+        self.foreground_tracker = ForegroundTracker()
+
         # クリップボード監視
         self.monitor = ClipboardMonitor()
 
@@ -72,6 +79,7 @@ class Application:
 
         # メインウィンドウ
         self.main_window.copy_requested.connect(self._on_copy_requested)
+        self.main_window.paste_requested.connect(self._on_paste_requested)
         self.main_window.settings_requested.connect(self._show_settings)
         self.main_window.close_requested.connect(self._quit)
         self.main_window.minimize_requested.connect(self._minimize_to_tray)
@@ -123,6 +131,75 @@ class Application:
         """コピーリクエスト時"""
         self.monitor.copy_to_clipboard(content_type, content, image_path)
 
+    def _on_paste_requested(self, content_type: str, content: str, image_path: str) -> None:
+        """貼り付けリクエスト時: クリップボードにコピーし、直前のアプリに Ctrl+V を送信。"""
+        target_hwnd = int(getattr(self.foreground_tracker, "last_other_hwnd", 0) or 0)
+        self._paste_log(
+            f"paste_request content_type={content_type} "
+            f"target_hwnd=0x{target_hwnd:x} title={window_title(target_hwnd)!r}"
+        )
+
+        was_visible = self.main_window.isVisible()
+        if was_visible:
+            self.main_window.hide()
+
+        if not self.monitor.copy_to_clipboard(content_type, content, image_path):
+            self._paste_log("clipboard copy failed — abort")
+            if was_visible:
+                self.main_window.show()
+            return
+
+        # 対象ウィンドウへフォーカスを戻してから Ctrl+V を送る
+        QTimer.singleShot(100, lambda: self._restore_and_paste(target_hwnd))
+
+    def _restore_and_paste(self, target_hwnd: int) -> None:
+        """対象ウィンドウを前面化して Ctrl+V を送出する。"""
+        activated = False
+        if target_hwnd:
+            activated = activate_window(target_hwnd)
+
+        fg_after = 0
+        try:
+            if sys.platform == "win32":
+                import ctypes
+                fg_after = int(ctypes.windll.user32.GetForegroundWindow() or 0)
+        except Exception:
+            pass
+        self._paste_log(
+            f"activate target=0x{target_hwnd:x} success={activated} "
+            f"fg_now=0x{fg_after:x} title={window_title(fg_after)!r}"
+        )
+
+        QTimer.singleShot(80, self._send_paste_keystroke)
+
+    def _paste_log(self, message: str) -> None:
+        """貼り付け関連のデバッグログを書き出す。"""
+        try:
+            STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+            log_path = STORAGE_DIR / "paste.log"
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} {message}\n")
+        except Exception:
+            pass
+
+    def _send_paste_keystroke(self) -> None:
+        """Win32 API で Ctrl+V を送信する。"""
+        if sys.platform != "win32":
+            return
+        try:
+            import ctypes
+
+            VK_CONTROL = 0x11
+            VK_V = 0x56
+            KEYEVENTF_KEYUP = 0x0002
+            user32 = ctypes.windll.user32
+            user32.keybd_event(VK_CONTROL, 0, 0, 0)
+            user32.keybd_event(VK_V, 0, 0, 0)
+            user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
+            user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+        except Exception as exc:
+            print(f"貼り付け送信に失敗: {exc}")
+
     def _on_history_added(self, history_id: int) -> None:
         """履歴追加時"""
         # メインウィンドウが表示されている場合は更新
@@ -139,6 +216,8 @@ class Application:
     def _quit(self) -> None:
         """アプリケーションを終了"""
         self.monitor.stop()
+        if hasattr(self, "foreground_tracker"):
+            self.foreground_tracker.stop()
         self.main_window.hide()
         self.tray_icon.hide()
         self.app.quit()

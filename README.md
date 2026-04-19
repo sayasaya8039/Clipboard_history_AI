@@ -8,7 +8,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.4+-green.svg)
-![Version](https://img.shields.io/badge/Version-1.1.1-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-1.2.0-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ## 概要

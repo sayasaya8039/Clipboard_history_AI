@@ -10,7 +10,7 @@ from pathlib import Path
 # アプリケーション設定
 APP_NAME = "クリップボード履歴"
 APP_STORAGE_NAME = "Coppy"
-APP_VERSION = "1.1.1"
+APP_VERSION = "1.2.3"
 
 
 @dataclass(frozen=True)

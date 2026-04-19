@@ -26,6 +26,7 @@ class HistoryDetailPanel(QFrame):
     """履歴の詳細ペイン。"""
 
     copy_requested = pyqtSignal()
+    paste_requested = pyqtSignal()
     delete_requested = pyqtSignal()
     pin_requested = pyqtSignal()
 
@@ -77,6 +78,10 @@ class HistoryDetailPanel(QFrame):
         self._copy_button = _make_button(icon_glyph("copy"), "コピー", object_name="iconButton", fixed_size=(30, 30))
         self._copy_button.clicked.connect(self.copy_requested.emit)
         actions.addWidget(self._copy_button)
+
+        self._paste_button = _make_button(icon_glyph("paste"), "貼り付け", object_name="iconButton", fixed_size=(30, 30))
+        self._paste_button.clicked.connect(self.paste_requested.emit)
+        actions.addWidget(self._paste_button)
 
         self._delete_button = _make_button(icon_glyph("delete"), "削除", object_name="dangerIconButton", fixed_size=(30, 30))
         self._delete_button.clicked.connect(self.delete_requested.emit)
@@ -138,6 +143,7 @@ class HistoryDetailPanel(QFrame):
     def _toggle_controls(self, enabled: bool) -> None:
         self._pin_button.setEnabled(enabled)
         self._copy_button.setEnabled(enabled)
+        self._paste_button.setEnabled(enabled)
         self._delete_button.setEnabled(enabled)
 
     def _update_pin_button(self, pinned: bool) -> None:
@@ -220,6 +226,7 @@ class SnippetDetailPanel(QFrame):
     """定型文の詳細ペイン。"""
 
     copy_requested = pyqtSignal()
+    paste_requested = pyqtSignal()
     delete_requested = pyqtSignal()
     edit_requested = pyqtSignal()
     favorite_requested = pyqtSignal()
@@ -272,6 +279,10 @@ class SnippetDetailPanel(QFrame):
         self._copy_button = _make_button(icon_glyph("copy"), "コピー", object_name="iconButton", fixed_size=(30, 30))
         self._copy_button.clicked.connect(self.copy_requested.emit)
         actions.addWidget(self._copy_button)
+
+        self._paste_button = _make_button(icon_glyph("paste"), "貼り付け", object_name="iconButton", fixed_size=(30, 30))
+        self._paste_button.clicked.connect(self.paste_requested.emit)
+        actions.addWidget(self._paste_button)
 
         self._delete_button = _make_button(icon_glyph("delete"), "削除", object_name="dangerIconButton", fixed_size=(30, 30))
         self._delete_button.clicked.connect(self.delete_requested.emit)
@@ -365,6 +376,7 @@ class SnippetDetailPanel(QFrame):
         self._favorite_button.setEnabled(enabled)
         self._edit_button.setEnabled(enabled)
         self._copy_button.setEnabled(enabled)
+        self._paste_button.setEnabled(enabled)
         self._delete_button.setEnabled(enabled)
 
     def _empty_widget(self, text: str) -> QWidget:
@@ -389,15 +401,8 @@ class SnippetDetailPanel(QFrame):
         editor.setObjectName("detailCode")
         editor.setFont(QFont("Consolas", 11))
         editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
-        return self._wrap_widget(editor)
-
-    def _wrap_widget(self, widget: QWidget) -> QWidget:
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(widget)
-        layout.addStretch(1)
-        return container
+        editor.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        return editor
 
     def _set_tags(self, tags: list[str]) -> None:
         _clear_layout(self._tags_row)

@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from PyQt6.QtCore import QTimer, Qt, QRectF, pyqtSignal
-from PyQt6.QtGui import QIcon, QPainterPath, QRegion
+from PyQt6.QtGui import QIcon, QPainterPath, QRegion, QCursor
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -54,6 +54,7 @@ class MainWindow(QMainWindow):
     close_requested = pyqtSignal()
     minimize_requested = pyqtSignal()
     copy_requested = pyqtSignal(str, str, str)
+    paste_requested = pyqtSignal(str, str, str)
     settings_requested = pyqtSignal()
 
     def __init__(self, parent: Optional[QWidget] = None):
@@ -67,6 +68,8 @@ class MainWindow(QMainWindow):
         self.resize(1440, 900)
         self.setWindowFlags(self._build_window_flags())
         self._corner_radius = 18
+
+        self._resize_margin = 8  # ウィンドウ端からのリサイズ判定幅(px)
 
         self._has_centered_once = False
         self._search_query = ""
@@ -155,6 +158,8 @@ class MainWindow(QMainWindow):
         self._detail_stack.addWidget(self._snippet_detail)
         body.addWidget(self._detail_stack, 1)
 
+        self._install_edge_grips()
+
     @staticmethod
     def _load_always_on_top_setting() -> bool:
         return str(get_setting("show_in_dock", "1") or "").strip().lower() in {"1", "true", "yes", "on"}
@@ -176,10 +181,12 @@ class MainWindow(QMainWindow):
         self._search.text_changed.connect(self._on_search_changed)
 
         self._history_detail.copy_requested.connect(self._copy_selected_history)
+        self._history_detail.paste_requested.connect(self._paste_selected_history)
         self._history_detail.delete_requested.connect(self._delete_selected_history)
         self._history_detail.pin_requested.connect(self._toggle_selected_history_pin)
 
         self._snippet_detail.copy_requested.connect(self._copy_selected_snippet)
+        self._snippet_detail.paste_requested.connect(self._paste_selected_snippet)
         self._snippet_detail.delete_requested.connect(self._delete_selected_snippet)
         self._snippet_detail.edit_requested.connect(self._edit_selected_snippet)
         self._snippet_detail.favorite_requested.connect(self._toggle_selected_snippet_favorite)
@@ -428,6 +435,22 @@ class MainWindow(QMainWindow):
             return
         self.copy_requested.emit("text", str(item.get("content") or ""), "")
 
+    def _paste_selected_history(self) -> None:
+        item = self._current_history_item()
+        if not item:
+            return
+        self.paste_requested.emit(
+            str(item.get("content_type") or "text"),
+            str(item.get("content") or ""),
+            str(item.get("image_path") or ""),
+        )
+
+    def _paste_selected_snippet(self) -> None:
+        item = self._current_snippet_item()
+        if not item:
+            return
+        self.paste_requested.emit("text", str(item.get("content") or ""), "")
+
     def _delete_selected_history(self) -> None:
         item = self._current_history_item()
         if not item:
@@ -556,6 +579,8 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event) -> None:  # noqa: N802
         super().resizeEvent(event)
         self._update_window_mask()
+        if hasattr(self, "_edge_grips"):
+            self._layout_edge_grips()
 
     def _center_on_screen(self) -> None:
         screen = self.screen()
@@ -607,6 +632,84 @@ class MainWindow(QMainWindow):
             self.showMaximized()
         QTimer.singleShot(0, self._update_window_mask)
 
+    # ── リサイズ処理 (エッジグリップ) ───────────────────────────
+
+    def _install_edge_grips(self) -> None:
+        """ウィンドウの4辺＋4隅に透明なグリップウィジェットを配置する。"""
+        edges = {
+            "left": Qt.CursorShape.SizeHorCursor,
+            "right": Qt.CursorShape.SizeHorCursor,
+            "top": Qt.CursorShape.SizeVerCursor,
+            "bottom": Qt.CursorShape.SizeVerCursor,
+            "top-left": Qt.CursorShape.SizeFDiagCursor,
+            "top-right": Qt.CursorShape.SizeBDiagCursor,
+            "bottom-left": Qt.CursorShape.SizeBDiagCursor,
+            "bottom-right": Qt.CursorShape.SizeFDiagCursor,
+        }
+        self._edge_grips: list[_EdgeGrip] = []
+        for name, cursor in edges.items():
+            grip = _EdgeGrip(name, cursor, self)
+            self._edge_grips.append(grip)
+
+    def _layout_edge_grips(self) -> None:
+        """ウィンドウサイズに合わせてグリップの位置を更新する。"""
+        m = self._resize_margin
+        w, h = self.width(), self.height()
+        for grip in self._edge_grips:
+            name = grip.edge_name
+            if name == "left":
+                grip.setGeometry(0, m, m, h - 2 * m)
+            elif name == "right":
+                grip.setGeometry(w - m, m, m, h - 2 * m)
+            elif name == "top":
+                grip.setGeometry(m, 0, w - 2 * m, m)
+            elif name == "bottom":
+                grip.setGeometry(m, h - m, w - 2 * m, m)
+            elif name == "top-left":
+                grip.setGeometry(0, 0, m, m)
+            elif name == "top-right":
+                grip.setGeometry(w - m, 0, m, m)
+            elif name == "bottom-left":
+                grip.setGeometry(0, h - m, m, m)
+            elif name == "bottom-right":
+                grip.setGeometry(w - m, h - m, m, m)
+            grip.raise_()
+
+    # ── /リサイズ処理 ─────────────────────────────────────────
+
     def closeEvent(self, event) -> None:  # noqa: N802
         event.ignore()
         self.hide()
+
+
+class _EdgeGrip(QWidget):
+    """ウィンドウ端に配置する透明なリサイズグリップ。"""
+
+    _EDGE_FLAGS: dict[str, Qt.Edge] = {
+        "left": Qt.Edge.LeftEdge,
+        "right": Qt.Edge.RightEdge,
+        "top": Qt.Edge.TopEdge,
+        "bottom": Qt.Edge.BottomEdge,
+        "top-left": Qt.Edge(Qt.Edge.TopEdge | Qt.Edge.LeftEdge),
+        "top-right": Qt.Edge(Qt.Edge.TopEdge | Qt.Edge.RightEdge),
+        "bottom-left": Qt.Edge(Qt.Edge.BottomEdge | Qt.Edge.LeftEdge),
+        "bottom-right": Qt.Edge(Qt.Edge.BottomEdge | Qt.Edge.RightEdge),
+    }
+
+    def __init__(self, edge_name: str, cursor_shape: Qt.CursorShape, parent: QWidget):
+        super().__init__(parent)
+        self.edge_name = edge_name
+        self._qt_edges = self._EDGE_FLAGS[edge_name]
+        self.setCursor(QCursor(cursor_shape))
+        self.setMouseTracking(True)
+        self.setStyleSheet("background: transparent;")
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton:
+            window = self.window()
+            if window and not window.isMaximized() and not window.isFullScreen():
+                handle = window.windowHandle()
+                if handle:
+                    handle.startSystemResize(self._qt_edges)
+                    return
+        super().mousePressEvent(event)

@@ -1,594 +1,384 @@
-# 🛠️ アプリ開発ガイドライン（cloud.md）
+# CLAUDE.md - グローバル開発ガイドライン
 
-このドキュメントは、Claudeでアプリを作成する際の標準ガイドラインです。  
-Webアプリ、Chrome拡張機能、デスクトップアプリなど、あらゆる種類のアプリ開発に適用されます。
+**あなたはプロのnote記事ライター兼Webアプリ、Windowsアプリ、拡張機能の制作者です。**
 
----
+## コアルール
 
-## 📋 基本方針
+1. **複数のツール呼び出しは常に並列実行を活用すること**
+2. **素早いタスクには `/exp` または `/fast` を使用し、探索と実装を並列実行すること**
 
-### 全体の原則
-- **シンプルで分かりやすいコード**を心がける
-- **日本語ユーザー**を第一に考えた設計
-- **白・黒・グレー**を基調としたモノトーンデザイン
-- **ダークモード / ライトモード両対応**
-- 過度な装飾を避け、**機能性重視**
+詳細は [PARALLEL_GUIDE.md](PARALLEL_GUIDE.md) を参照。
 
 ---
 
-## 🎨 デザインガイドライン
+## 基本方針
 
-### カラーパレット
+| ルール | 内容 |
+|--------|------|
+| 言語 | **必ず日本語で回答** |
+| 実行 | **Yes/No確認を求めずに、タスクの最後まで実行** |
+| 完了 | **デバッグ・ビルド・デプロイまで必ず完了** |
 
-```
-【ライトモード】
-- 背景（メイン）: #FFFFFF
-- 背景（サブ）  : #F5F5F5, #EEEEEE
-- テキスト（メイン）: #1A1A1A
-- テキスト（サブ）  : #666666
-- ボーダー: #E0E0E0, #D0D0D0
-- アクセント: #333333
-
-【ダークモード】
-- 背景（メイン）: #1A1A1A
-- 背景（サブ）  : #2D2D2D, #3D3D3D
-- テキスト（メイン）: #F5F5F5
-- テキスト（サブ）  : #A0A0A0
-- ボーダー: #404040, #505050
-- アクセント: #E0E0E0
-
-【共通アクセントカラー（必要な場合のみ）】
-- 成功: #4CAF50（緑）
-- エラー: #F44336（赤）
-- 警告: #FF9800（オレンジ）
-- 情報: #2196F3（青）
-```
-
-### タイポグラフィ
-
-```css
-/* 推奨フォントスタック */
-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 
-             'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-
-/* フォントサイズ目安 */
-- 見出し（大）: 24px - 32px
-- 見出し（中）: 18px - 20px
-- 本文: 14px - 16px
-- 補足テキスト: 12px - 13px
-```
-
-### スペーシング
-
-```
-/* 基本単位: 4px */
-- xs: 4px
-- sm: 8px
-- md: 16px
-- lg: 24px
-- xl: 32px
-- 2xl: 48px
-```
-
-### ボーダー・角丸
-
-```
-- 角丸（小）: 4px - ボタン、入力欄
-- 角丸（中）: 8px - カード、モーダル
-- 角丸（大）: 12px - 大きなコンテナ
-- ボーダー幅: 1px（基本）
-```
-
-### シャドウ
-
-```css
-/* ライトモード */
-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-/* ダークモード */
-box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-```
+> **詳細ルールは `.claude/rules/` に自動適用されます。**
 
 ---
 
-## ⚛️ 技術スタック
+## Ghostty ビルドルール（Tier 0 — 最重要）
 
-### React（Artifacts）
+> **コード変更後は必ず最後にビルドを実行し、成功を確認すること。途中で止めない。**
 
-```jsx
-// 基本構成
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+| ステップ | コマンド | 必須 |
+|----------|---------|------|
+| プロセス停止 | `taskkill.exe /F /IM ghostty.exe 2>/dev/null \|\| true` | 必須（ビルド前） |
+| Release ビルド | `cargo zigbuild --release -p zwg-app` | 必須 |
+| ビルド成功確認 | エラー0であること | 必須 |
+| Git コミット+プッシュ | `git add → commit → push` | 必須 |
 
-// 状態管理: useState を中心に使用
-const [state, setState] = useState(initialValue);
+### 実行フロー（スキップ禁止）
 
-// 副作用: useEffect
-useEffect(() => {
-  // 処理
-}, [dependencies]);
-
-// パフォーマンス最適化（必要な場合のみ）
-const memoizedValue = useMemo(() => computeValue(a, b), [a, b]);
-const memoizedCallback = useCallback(() => doSomething(a), [a]);
+```
+taskkill ghostty.exe → cargo zigbuild --release -p zwg-app → エラー0確認 → git add/commit/push → 完了報告
 ```
 
-### 使用可能なライブラリ（Artifacts内）
-
-```jsx
-// アイコン - Lucide React を標準使用
-import { Settings, Check, X, ChevronDown, Search, Plus, Trash2 } from 'lucide-react';
-
-// チャート（必要な場合）
-import { LineChart, BarChart, PieChart, XAxis, YAxis, Tooltip } from 'recharts';
-
-// 数学計算（必要な場合）
-import * as math from 'mathjs';
-
-// データ処理（必要な場合）
-import _ from 'lodash';
-```
-
-### スタイリング - Tailwind CSS
-
-```jsx
-// 基本的なTailwindクラスを使用
-// ※ カスタムカラーは使用不可、インラインstyleで対応
-
-// ダークモード対応の例
-<div className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-
-// ただしArtifactsではdark:が効かない場合があるため、
-// 状態管理でテーマを切り替える方式を推奨
-```
-
-### ダークモード実装パターン
-
-```jsx
-const App = () => {
-  const [isDark, setIsDark] = useState(false);
-  
-  // システム設定を検出（初回のみ）
-  useEffect(() => {
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setIsDark(true);
-    }
-  }, []);
-
-  const theme = {
-    bg: isDark ? '#1A1A1A' : '#FFFFFF',
-    bgSub: isDark ? '#2D2D2D' : '#F5F5F5',
-    text: isDark ? '#F5F5F5' : '#1A1A1A',
-    textSub: isDark ? '#A0A0A0' : '#666666',
-    border: isDark ? '#404040' : '#E0E0E0',
-  };
-
-  return (
-    <div style={{ backgroundColor: theme.bg, color: theme.text }}>
-      {/* コンテンツ */}
-    </div>
-  );
-};
-```
+- **ビルド前に必ず `taskkill.exe /F /IM ghostty.exe` を実行**（Windowsがexeをロックするため）
+- プロセスが存在しない場合のエラーは無視する（`2>/dev/null || true`）
+- ビルドエラーが出た場合: 即座に修正して再ビルド（ユーザーに確認しない）
+- エージェントに委任する場合も、エージェントのプロンプトにこのビルドルールを含めること
+- `cargo build`（debugビルド）ではなく `cargo zigbuild --release -p zwg-app` を使うこと
 
 ---
 
-## 📝 コーディング規約
+## 絶対遵守ルール（必須・最重要）
 
-### 命名規則
+> **これらのルールは例外なく必ず守ること。違反は許容されない。**
 
-```javascript
-// コンポーネント: PascalCase
-const UserProfile = () => { ... };
-const SettingsModal = () => { ... };
+### 最重要（Tier 0）
 
-// 関数・変数: camelCase
-const handleClick = () => { ... };
-const userName = 'さやさや';
+| ルール | 内容 | 詳細 |
+|--------|------|------|
+| **日本語回答** | 必ず日本語で回答 | 例外なし |
+| **UI作成** | gpui を最優先、egui は第二選択 | Electrobunは第三選択（Webview型デスクトップ） |
+| **コンテキスト管理** | 新鮮なコンテキストを維持 | HANDOFF.md活用、適切な/clear |
+| **AGENTS.md配置** | CLAUDE.mdと共にAGENTS.mdも配置 | 全AIエージェント互換性確保 |
+| **SKILL.md配置** | CLAUDE.mdと共にSKILL.mdも配置 | マルチAIスキル定義 |
+| **Git自動コミット** | 更新時は必ずGitHubにコミット・プッシュ・デプロイ | 変更後即座に実行 |
 
-// 定数: UPPER_SNAKE_CASE
-const MAX_ITEMS = 100;
-const API_ENDPOINT = 'https://...';
+### 必須（Tier 1）
 
-// ブール値: is/has/can/should プレフィックス
-const isLoading = true;
-const hasError = false;
-const canSubmit = true;
-```
+| ルール | 内容 |
+|--------|------|
+| **確認なし実行** | Yes/No確認せずタスク完了まで実行 |
+| **ビルド・デプロイ完了** | デバッグ・ビルド・デプロイまで必ず完了 |
+| **アイコン作成** | ビルド前にPythonで各種アイコンを作成・適用 |
+| **bnmp最優先** | **npm/npx/biome → bnmp自動リダイレクト**（bnmp > pnpm > bun > npm） |
+| **バージョン管理** | 開発環境バージョン確認・UIにバージョン表示・更新時は必ずバージョンアップ |
+| **最新モデル確認** | AI API実装前にWebSearchで最新モデル名を確認 |
+| **Jina Reader使用** | Web取得は `r.jina.ai` / `s.jina.ai` を優先 |
+| **コンテナ使用** | 危険なタスクは隔離環境で実行（Docker/WSL2/venv） |
+| **Git Worktree** | 並行開発時はgit worktreeを活用 |
+| **言語選択** | CLIツール→Zig、API/サービス→Go、GUI→Rust+gpui、デスクトップ(TS)→Electrobun、Web→TypeScript/Svelte |
 
-### コンポーネント構成
+### 禁止事項
 
-```jsx
-const ComponentName = ({ prop1, prop2 }) => {
-  // 1. useState
-  const [state, setState] = useState(initialValue);
-  
-  // 2. useMemo / useCallback（必要な場合）
-  
-  // 3. useEffect
-  useEffect(() => {
-    // 処理
-  }, []);
-  
-  // 4. イベントハンドラ
-  const handleClick = () => {
-    // 処理
-  };
-  
-  // 5. 早期リターン（ローディング、エラー等）
-  if (isLoading) return <Loading />;
-  
-  // 6. メインのJSX
-  return (
-    <div>
-      {/* コンテンツ */}
-    </div>
-  );
-};
-```
-
-### JSX記述ルール
-
-```jsx
-// 条件付きレンダリング
-{condition && <Component />}
-{condition ? <ComponentA /> : <ComponentB />}
-
-// リストレンダリング - 必ずkeyを付ける
-{items.map((item) => (
-  <Item key={item.id} data={item} />
-))}
-
-// イベントハンドラ
-<button onClick={handleClick}>クリック</button>
-<button onClick={() => handleDelete(id)}>削除</button>
-
-// インラインスタイル（テーマ対応時）
-<div style={{ backgroundColor: theme.bg, padding: '16px' }}>
-```
+| 禁止 | 代替 |
+|------|------|
+| any型 | unknown使用 |
+| APIキーハードコード | 環境変数のみ |
+| 古いモデル名（gpt-3.5-turbo, gpt-4, claude-2, claude-opus-4-5等） | WebSearchで最新確認 |
+| distフォルダ | アプリ名フォルダを使用 |
+| 1000行超ファイル | 分割必須 |
+| 空のcatchブロック | 適切なエラー処理 |
+| コンテキスト劣化まで会話継続 | HANDOFF.md作成後に新規会話 |
 
 ---
 
-## 🌏 日本語対応
+## 開発前の必須チェック
 
-### テキスト
+1. 関連する .claude/rules/*.md が自動適用
+2. 使えるMCPツールを確認
+3. 上記を活用して作業開始
 
-```jsx
-// UIテキストは全て日本語で記述
-<button>保存する</button>
-<label>名前を入力してください</label>
-<p>データが見つかりませんでした</p>
+### 主要ルール
 
-// エラーメッセージも日本語で分かりやすく
-const errorMessages = {
-  required: '入力必須です',
-  invalidEmail: 'メールアドレスの形式が正しくありません',
-  tooLong: '文字数が上限を超えています',
-  networkError: '通信エラーが発生しました。もう一度お試しください',
-};
-```
+| カテゴリ | ルールファイル |
+|----------|---------------|
+| ドキュメント | Documentationwriting.md |
+| TypeScript | TypeScript.md |
+| API設計 | api-designer.md |
+| Chrome拡張 | chrome-extension.md |
+| コードレビュー | code-review.md |
+| C++ | cpp.md |
+| Git | git-workflow.md |
+| 言語選択 | language-selection.md |
+| パフォーマンス | performance.md |
+| Python | python.md |
+| React | react.md |
+| リファクタリング | refactoring.md |
+| Rust | rust.md |
+| セキュリティ | security-audit.md |
+| テスト | testing.md |
+| Windowsアプリ | windows-app.md |
 
-### 日付・数値フォーマット
+### MCP Servers
 
-```javascript
-// 日付フォーマット
-const formatDate = (date) => {
-  return new Intl.DateTimeFormat('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  }).format(date);
-};
-// 結果: "2024年12月9日"
-
-// 数値フォーマット（カンマ区切り）
-const formatNumber = (num) => {
-  return new Intl.NumberFormat('ja-JP').format(num);
-};
-// 結果: "1,234,567"
-
-// 通貨フォーマット
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('ja-JP', {
-    style: 'currency',
-    currency: 'JPY',
-  }).format(amount);
-};
-// 結果: "¥1,234"
-```
+| MCP | 用途 |
+|-----|------|
+| context7 | ライブラリドキュメント取得 |
+| **serena** | **コードベース解析・編集** |
+| playwright | ブラウザ自動化 |
+| github | GitHub操作 |
+| **memory** | **知識グラフ保存** |
+| **claude-context** | **セマンティックコード検索（40%トークン削減）** |
+| **antigravity** | **Gemini + Claude Code ハイブリッド開発** |
 
 ---
 
-## ⚠️ エラーハンドリング
+## 開発環境
 
-### 基本パターン
+| ツール | バージョン | 用途 |
+|--------|-----------|------|
+| **bnmp** | 0.1+ | Zig製パッケージマネージャー |
+| **pnpm** | 10+ | Node.jsパッケージ管理 |
+| **Bun** | 1.3+ | 高速JS/TSランタイム |
+| **Biome** | 1.9+ | リンター/フォーマッター |
+| **Go** | 1.25+ | Webサービス/API開発 |
+| **Rust** | 1.75+ | システム/GUI開発 |
+| **Zig** | 0.15+ | CLIツール開発 |
+| Node.js | 20+ | pnpm/Bun非対応時のみ |
+| Python | 3.12+ | AI/ML、uv推奨 |
+| **Electrobun** | 1.13+ | TypeScript製クロスプラットフォームデスクトップアプリ（Bun+Zig） |
 
-```jsx
-const App = () => {
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+### Go開発環境
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('データの取得に失敗しました');
-      }
-      const data = await response.json();
-      // データ処理
-    } catch (err) {
-      setError(err.message || '予期せぬエラーが発生しました');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+| 項目 | 値 |
+|------|-----|
+| **バージョン** | go1.25.5 windows/amd64 |
+| **GOROOT** | `C:\Program Files\Go` |
+| **GOPATH** | `C:\Users\Owner\go` |
+| **ツール格納先** | `C:\Users\Owner\go\bin` |
 
-  return (
-    <div>
-      {isLoading && <p>読み込み中...</p>}
-      {error && (
-        <div style={{ color: '#F44336', padding: '8px' }}>
-          ⚠️ {error}
-        </div>
-      )}
-      {/* メインコンテンツ */}
-    </div>
-  );
-};
-```
+#### インストール済みツール
 
-### 入力バリデーション
-
-```jsx
-const validateInput = (value, rules) => {
-  const errors = [];
-  
-  if (rules.required && !value.trim()) {
-    errors.push('入力必須です');
-  }
-  
-  if (rules.minLength && value.length < rules.minLength) {
-    errors.push(`${rules.minLength}文字以上で入力してください`);
-  }
-  
-  if (rules.maxLength && value.length > rules.maxLength) {
-    errors.push(`${rules.maxLength}文字以内で入力してください`);
-  }
-  
-  if (rules.pattern && !rules.pattern.test(value)) {
-    errors.push('形式が正しくありません');
-  }
-  
-  return errors;
-};
-```
+| ツール | 用途 |
+|--------|------|
+| gopls | Language Server |
+| dlv | Delve デバッガー |
+| staticcheck | 静的解析 |
+| goimports | import自動整理 |
 
 ---
 
-## ♿ アクセシビリティ（基本）
+## 人気リポジトリ（2025-2026）
 
-### 必須対応項目
-
-```jsx
-// 1. ボタンには適切なラベルを
-<button aria-label="メニューを開く">
-  <MenuIcon />
-</button>
-
-// 2. フォーム要素にはlabelを紐付け
-<label htmlFor="username">ユーザー名</label>
-<input id="username" type="text" />
-
-// 3. 画像には代替テキスト
-<img src="..." alt="プロフィール画像" />
-
-// 4. キーボード操作対応
-<div 
-  role="button"
-  tabIndex={0}
-  onClick={handleClick}
-  onKeyDown={(e) => e.key === 'Enter' && handleClick()}
->
-
-// 5. フォーカス可視化（削除しない）
-// outline: none は避け、カスタムフォーカススタイルを使用
-<button style={{ outline: 'none' }} className="focus:ring-2 focus:ring-gray-400">
-```
+| リポジトリ | スター | 用途 |
+|-----------|--------|------|
+| [awesome-claude-code](https://github.com/hesreallyhim/awesome-claude-code) | 19.1k | Tips, CLAUDE.md例, ワークフロー |
+| [sst/opencode](https://github.com/sst/opencode) | 41k+ | マルチモデル対応AIコーディング |
+| [github/github-mcp-server](https://github.com/github/github-mcp-server) | 25.1k | GitHub MCP統合 |
+| [spec-kit](https://github.com/github/spec-kit) | 50k+ | 仕様駆動開発 |
+| [zilliztech/claude-context](https://github.com/zilliztech/claude-context) | - | セマンティックコード検索MCP |
+| [agents.md](https://agents.md) | - | AIエージェント設定標準 |
+| **[Auto-Claude](https://github.com/AndyMik90/Auto-Claude)** | - | **自律型マルチエージェント開発** |
+| [Dify](https://github.com/langgenius/dify) | 121k+ | エージェントワークフロー |
+| [n8n](https://github.com/n8n-io/n8n) | 150k+ | ワークフロー自動化 |
 
 ---
 
-## 📁 ファイル構成（参考）
+## Python高速化
 
-### Chrome拡張機能
+> 参考: サプーチャンネル「Pythonを速くさせる方法13個」
 
-```
-extension/
-├── manifest.json
-├── popup/
-│   ├── popup.html
-│   ├── popup.js
-│   └── popup.css
-├── content/
-│   └── content.js
-├── background/
-│   └── background.js
-├── options/
-│   ├── options.html
-│   └── options.js
-└── icons/
-    ├── icon16.png
-    ├── icon48.png
-    └── icon128.png
-```
+### 必須ツール
 
-### Webアプリ（単一ファイル - Artifacts用）
+| ツール | 用途 |
+|--------|------|
+| **uv** | 高速パッケージ管理（pip比100x） |
+| **Ruff** | 高速リンター/フォーマッター |
+| **Scalene** | CPU/メモリプロファイラ |
 
-```jsx
-// 全てを1つのファイルにまとめる
-// コンポーネントは上部に定義、メインAppは最後に
+### 高速化優先順位
 
-// --- 共通コンポーネント ---
-const Button = ({ children, onClick, variant = 'primary' }) => { ... };
-const Input = ({ value, onChange, placeholder }) => { ... };
-const Modal = ({ isOpen, onClose, children }) => { ... };
+| 優先度 | テクニック |
+|--------|-----------|
+| 1 | プロファイリングでボトルネック特定 |
+| 2 | 内包表記・適切なデータ構造 |
+| 3 | NumPy/Polars（ベクトル演算） |
+| 4 | Numba（JITコンパイル） |
+| 5 | asyncio（I/O並列化） |
+| 6 | Cython/Rust連携（最終手段） |
 
-// --- 機能別コンポーネント ---
-const Header = () => { ... };
-const MainContent = () => { ... };
-const Footer = () => { ... };
+### 詳細ルール
 
-// --- メインApp ---
-const App = () => {
-  return (
-    <div>
-      <Header />
-      <MainContent />
-      <Footer />
-    </div>
-  );
-};
-
-export default App;
-```
+`.claude/rules/python-performance.md` を参照
 
 ---
 
-## 🔧 よく使うUIパターン
+## Claude-Delegator（GPTエキスパート委任）【必須】
 
-### ボタン
+> **以下の場面では必ずGPTエキスパートに委任すること**
+> **スキップ・省略は禁止**
+> 参照: [jarrodwatts/claude-delegator](https://github.com/jarrodwatts/claude-delegator)
 
-```jsx
-const Button = ({ children, onClick, variant = 'primary', disabled = false }) => {
-  const baseStyle = {
-    padding: '8px 16px',
-    borderRadius: '4px',
-    border: 'none',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    opacity: disabled ? 0.5 : 1,
-    transition: 'all 0.2s',
-  };
+### 場面別GPT委任（必須・スキップ禁止）
 
-  const variants = {
-    primary: { backgroundColor: '#333', color: '#fff' },
-    secondary: { backgroundColor: '#e0e0e0', color: '#333' },
-    outline: { backgroundColor: 'transparent', border: '1px solid #333', color: '#333' },
-  };
+| 場面 | GPTエキスパート | 実行方法 |
+|------|----------------|----------|
+| **システム設計・アーキテクチャ決定** | **Architect** | `/architect` または `codex exec` |
+| **作業計画のレビュー** | **Plan Reviewer** | `/plan-reviewer` または `codex exec` |
+| **要件が曖昧な時** | **Scope Analyst** | `/scope-analyst` または `codex exec` |
+| **コードレビュー・バグ発見** | **Code Reviewer** | `/code-reviewer` または `codex exec` |
+| **セキュリティ懸念・脆弱性診断** | **Security Analyst** | `/security-analyst` または `codex exec` |
 
-  return (
-    <button
-      style={{ ...baseStyle, ...variants[variant] }}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-};
+### オーケストレーションフロー
+
+```
+User Request → Claude Code → [トリガー判定 → エキスパート選択]
+                    ↓
+    ┌───────────────┼───────────────┐
+    ↓               ↓               ↓
+Architect    Code Reviewer   Security Analyst
+    ↓               ↓               ↓
+[Advisory (read-only) OR Implementation (workspace-write)]
+    ↓               ↓               ↓
+Claude が統合 ←─────┴───────────────┘
 ```
 
-### 入力フィールド
+### 5つのGPTエキスパート
 
-```jsx
-const Input = ({ value, onChange, placeholder, error }) => {
-  return (
-    <div>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        style={{
-          width: '100%',
-          padding: '8px 12px',
-          borderRadius: '4px',
-          border: `1px solid ${error ? '#F44336' : '#E0E0E0'}`,
-          fontSize: '14px',
-        }}
-      />
-      {error && (
-        <p style={{ color: '#F44336', fontSize: '12px', marginTop: '4px' }}>
-          {error}
-        </p>
-      )}
-    </div>
-  );
-};
-```
+| エキスパート | プロンプト | 専門分野 | トリガー |
+|-------------|-----------|---------|---------|
+| **Architect** | `prompts/architect.md` | システム設計、トレードオフ | 「構造を決めたい」「トレードオフは」 |
+| **Plan Reviewer** | `prompts/plan-reviewer.md` | 計画検証 | 「計画をレビューして」 |
+| **Scope Analyst** | `prompts/scope-analyst.md` | 要件分析 | 「スコープを明確に」 |
+| **Code Reviewer** | `prompts/code-reviewer.md` | コード品質、バグ | 「コードをレビューして」 |
+| **Security Analyst** | `prompts/security-analyst.md` | 脆弱性 | 「セキュリティは大丈夫？」 |
 
-### モーダル
+### 7セクション委任フォーマット（必須）
 
-```jsx
-const Modal = ({ isOpen, onClose, title, children }) => {
-  if (!isOpen) return null;
+すべての委任プロンプトに含める項目：
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          backgroundColor: '#fff',
-          borderRadius: '8px',
-          padding: '24px',
-          maxWidth: '480px',
-          width: '90%',
-          maxHeight: '80vh',
-          overflow: 'auto',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 style={{ margin: 0, fontSize: '18px' }}>{title}</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-            ✕
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-};
-```
+1. **TASK** - 具体的な目標
+2. **EXPECTED OUTCOME** - 成功の定義
+3. **CONTEXT** - 現状、関連コード、背景
+4. **CONSTRAINTS** - 技術的制約、パターン
+5. **MUST DO** - 必須要件
+6. **MUST NOT DO** - 禁止事項
+7. **OUTPUT FORMAT** - 出力形式
+
+### 委任モード
+
+| モード | サンドボックス | 用途 |
+|--------|--------------|------|
+| **Advisory** | `read-only` | 分析、推奨、レビュー |
+| **Implementation** | `workspace-write` | 変更実行、修正 |
+
+### threadID から本文取得（必須）
+
+> **threadIDから本文を読み取るスクリプトがある、それで本文を読み込んで**
+
+### 委任しない場面
+
+- 単純な構文質問 → 直接回答
+- 最初の修正試行 → まず自分で試す
+- 些細なファイル操作
+- リサーチ/ドキュメントタスク
 
 ---
 
-## ✅ チェックリスト
+## X Research 自動並行実行（Grok x_search）
 
-### 開発時の確認項目
+> **リサーチ・情報収集タスクでは、WebSearch と Grok x_search を常に並行実行する**
 
-- [ ] 日本語で分かりやすいUIテキストになっているか
-- [ ] ダークモード / ライトモード両方で見た目を確認したか
-- [ ] エラー時の表示・メッセージは適切か
-- [ ] ボタンやリンクはクリック可能に見えるか
-- [ ] 入力欄にはプレースホルダーやラベルがあるか
-- [ ] ローディング状態の表示はあるか
-- [ ] キーボードでの操作は可能か（基本的なもの）
+### トリガー条件
 
-### 納品前の確認項目
+以下のいずれかに該当する場合に発動:
+- ユーザーが「調べて」「検索して」「リサーチして」「トレンド」「最新情報」「情報収集」と依頼した
+- WebSearch / WebFetch ツールを使おうとしている
+- 技術トピック、AI、Web3、投資、ビジネス関連の調査を行う
 
-- [ ] コンソールにエラーが出ていないか
-- [ ] 不要なconsole.logは削除したか
-- [ ] コードにコメントは適切に入っているか
-- [ ] 動作確認は完了したか
+### 実行パターン
+
+```
+ユーザー: 「〇〇について調べて」
+    ├── WebSearch (Claude標準)     ← 並行
+    └── Grok x_search (xAI API)   ← 並行
+         └── cd /mnt/d/NEXTCLOUD/x-research-skills && npx tsx scripts/grok_context_research.ts --topic "〇〇"
+```
+
+### コマンド
+
+```bash
+cd /mnt/d/NEXTCLOUD/x-research-skills && npx tsx scripts/grok_context_research.ts --topic "<トピック>" --audience both --days 7
+```
+
+### オプション
+
+| 用途 | オプション |
+|------|-----------|
+| 日本語優先（デフォルト） | `--locale ja` |
+| 英語圏優先 | `--locale global` |
+| エンジニア向け | `--audience engineer` |
+| 投資家向け | `--audience investor` |
+| 両方 | `--audience both` |
+
+### スラッシュコマンド
+
+| コマンド | 用途 |
+|---------|------|
+| `/x-research` | 記事執筆前の周辺リサーチ（一次情報/用語/反論/数字を収集） |
+| `/x-trend-ideas` | X投稿ネタ出し（impressions最大化、トレンド探索） |
+
+### 注意
+- APIコストが発生するため、明らかにリサーチ不要な質問では実行しない
+- 投資助言に見える表現は禁止
+
+### 設定ファイル
+
+| パス | 内容 |
+|------|------|
+| `~/.claude/rules/delegator/*.md` | 委任ルール（4ファイル） |
+| `~/.claude/rules/delegator/prompts/*.md` | エキスパートプロンプト（5ファイル） |
 
 ---
 
-## 📝 備考
+## Web操作ルール（Tier 1 - 最優先）
 
-- このガイドラインは汎用的なものです。プロジェクトの要件に応じて柔軟に調整してください。
-- 質問や追加要望があれば、いつでもお知らせください。
+> **Web操作・ブラウザ自動化には必ず Playwright CLI (bunx playwright) を最優先で使用すること**
 
----
+### ツール優先順位
 
-*最終更新: 2024年12月*
+| ツール | 優先度 | 用途 |
+|--------|--------|------|
+| **Playwright CLI** | **1位（最優先）** | bunx playwright / npx playwright |
+| Playwright MCP | 2位 | CLIが使えない場合 |
+| Puppeteer MCP | 3位 | 上記すべて使えない場合のみ |
+| WebFetch | 4位 | 静的HTMLの取得のみ（操作不要） |
+| Claude in Chrome | 使用禁止 | 無効化済み |
+
+### 設定完了項目
+
+| 項目 | 状態 | 場所 |
+|------|------|------|
+| **Playwright CLI** | 有効 | bunx playwright / npx playwright |
+| **Playwright MCP** | 有効（第2選択） | MCPサーバー |
+| **Permission** | 許可済み | `Bash(bunx playwright *)` |
+| **UserPromptフック** | 設定済み | Web操作時にPlaywright CLI優先を通知 |
+
+### Playwright CLI 基本操作（最優先）
+
+```bash
+# Playwright CLI（最優先）
+bunx playwright open <url>              # ブラウザを開く
+bunx playwright screenshot <url> out.png # スクリーンショット
+bunx playwright pdf <url> out.pdf       # PDF生成
+bunx playwright codegen <url>           # コード生成モード
+```
+
+### Playwright MCP（第2選択）
+
+```bash
+# MCPツールとして使用（mcp__playwright__* ツール群）
+# - browser_navigate: ページを開く
+# - browser_snapshot: 要素取得
+# - browser_click: クリック
+```
