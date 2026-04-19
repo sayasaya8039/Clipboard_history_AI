@@ -8,7 +8,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![PyQt6](https://img.shields.io/badge/PyQt6-6.4+-green.svg)
-![Version](https://img.shields.io/badge/Version-1.2.0-brightgreen.svg)
+![Version](https://img.shields.io/badge/Version-1.2.3-brightgreen.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ## 概要
@@ -44,26 +44,47 @@
 
 ## インストール
 
-### 必要条件
+### 推奨: インストーラー版（エンドユーザー向け）
 
-- Python 3.10 以上
-- Windows 10/11
+[Releases](https://github.com/sayasaya8039/Clipboard_history_AI/releases/latest) から以下のいずれかを入手してください。
 
-### セットアップ
+| ファイル | 用途 |
+|---------|------|
+| `coppy-<version>-setup.exe` | **推奨** — インストーラー。スタートメニュー / デスクトップショートカット / 自動起動オプション付き |
+| `coppy.exe` | ポータブル版。インストール不要、そのまま実行可能 |
+
+Python ランタイムのインストールは不要です。
+
+### 開発者向けセットアップ
+
+必要条件: Python 3.10 以上 / Windows 10・11
 
 ```bash
 git clone https://github.com/sayasaya8039/Clipboard_history_AI.git
 cd Clipboard_history_AI
 pip install -r requirements.txt
+python main.py
 ```
 
-### ビルド（EXE 生成）
+### ビルド
+
+#### ポータブル EXE
 
 ```bash
 python -m PyInstaller ClipboardHistory.spec --noconfirm
 ```
 
 `dist/coppy.exe` が生成されます。
+
+#### インストーラー
+
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) が必要です。
+
+```bash
+"%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe" installer\coppy.iss
+```
+
+`dist/coppy-<version>-setup.exe` が生成されます。
 
 ## 使い方
 
@@ -127,6 +148,9 @@ Coppy/
 │   └── icon.png            # アプリアイコン (PNG)
 ├── tests/                  # テスト
 ├── ClipboardHistory.spec   # PyInstaller ビルド設定
+├── installer/
+│   └── coppy.iss           # Inno Setup インストーラースクリプト
+├── foreground_tracker.py   # 前面ウィンドウ追跡（貼り付け対象特定）
 ├── requirements.txt
 └── README.md
 ```
